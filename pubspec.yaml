@@ -1,0 +1,33 @@
+name: tusolution
+description: "Sistema de gestión para taller de reparaciones Tu Solution"
+publish_to: "none" # Evita que se publique por accidente en pub.dev
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # Gestión de estado reactiva
+  flutter_riverpod: ^2.4.9
+
+  # Base de datos local (Drift y SQLite)
+  drift: ^2.14.0
+  sqlite3_flutter_libs: ^0.5.20
+  path_provider: ^2.1.2
+  path: ^1.9.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+  # Herramientas obligatorias para generar el código de Drift (.g.dart)
+  build_runner: ^2.4.8
+  drift_dev: ^2.14.0
+
+flutter:
+  uses-material-design: true
