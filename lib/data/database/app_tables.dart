@@ -18,6 +18,7 @@ class Equipos extends Table {
 }
 
 // 3. Tabla de Repuestos
+@DataClassName('RepuestosData')
 class Repuestos extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get codigo => text().unique()();
@@ -27,6 +28,7 @@ class Repuestos extends Table {
 }
 
 // 4. Tabla de Órdenes de Reparación
+@DataClassName('OrdenesReparacionData')
 class OrdenesReparacion extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get equipoId => integer().references(Equipos, #id, onDelete: KeyAction.cascade)();
