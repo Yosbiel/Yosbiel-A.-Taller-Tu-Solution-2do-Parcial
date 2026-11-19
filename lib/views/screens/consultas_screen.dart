@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../viewmodels/talleres_providers.dart';
 
-final cargaTrabajoProvider = FutureProvider.autoDispose>((ref) async {
+final cargaTrabajoProvider = FutureProvider.autoDispose((ref) async {
   final dao = ref.watch(talleresDaoProvider);
   return await dao.obtenerCargaTrabajoPorTecnico();
 });
@@ -20,7 +20,7 @@ class ConsultasScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text('Carga de Trabajo por Técnico', 
+          const Text('Carga de Trabajo por Técnico',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           cargaAsync.when(
@@ -44,8 +44,9 @@ class ConsultasScreen extends ConsumerWidget {
             },
           ),
           const Divider(height: 32),
-          const Text('Alerta: Repuestos con Stock Bajo', 
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red)),
+          const Text('Alerta: Repuestos con Stock Bajo',
+              style: TextStyle(
+                  fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red)),
           const SizedBox(height: 8),
           repuestosStockBajoAsync.when(
             loading: () => const CircularProgressIndicator(),
@@ -62,7 +63,8 @@ class ConsultasScreen extends ConsumerWidget {
                       title: Text(rep.nombre),
                       subtitle: Text('Código: ${rep.codigo}'),
                       trailing: Text('Stock: ${rep.existencias}',
-                          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, color: Colors.red)),
                     ),
                   );
                 }).toList(),
