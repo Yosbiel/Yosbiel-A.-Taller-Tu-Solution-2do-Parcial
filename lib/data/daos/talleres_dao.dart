@@ -158,7 +158,7 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
     return (select(ordenesReparacion)..where((t) => t.equipoId.equals(equipoId))).get();
   }
 
-  Future> obtenerCargaTrabajoPorTecnico() async {
+  Future<Map<String, int>> obtenerCargaTrabajoPorTecnico() async {
     final ordenes = await (select(ordenesReparacion)
           ..where((t) => t.estado.isNotIn(['entregada', 'cancelada'])))
         .get();
