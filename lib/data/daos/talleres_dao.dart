@@ -59,14 +59,15 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
     });
   }
 
-  Future<bool> actualizarEstadoYTecnico(int idOrden, String nuevoEstado, String tecnico) {
+  Future<bool> actualizarEstadoYTecnico(int idOrden, String nuevoEstado, String tecnico) async {
     final tecnicoLimpio = tecnico.trim();
-    return (update(ordenesReparacion)..where((t) => t.id.equals(idOrden))).write(
+    final filas = await (update(ordenesReparacion)..where((t) => t.id.equals(idOrden))).write(
       OrdenesReparacionCompanion(
         estado: Value(nuevoEstado),
         tecnicoAsignado: Value(tecnicoLimpio.isEmpty ? null : tecnicoLimpio),
       ),
     );
+    return filas > 0;
   }
 
   Future<int> insertarTrabajo(int ordenId, String descripcion, double costo) {
