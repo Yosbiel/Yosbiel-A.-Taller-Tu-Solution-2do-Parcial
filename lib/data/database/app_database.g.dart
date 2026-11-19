@@ -87,17 +87,17 @@ class $ClientesTable extends Clientes with TableInfo<Clientes, Cliente> {
 
   $ClientesTable(this.attachedDatabase, [this._alias]);
 
-  final GeneratedColumn<int> id = GeneratedColumn<int>(
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
       'id', aliasedName, false,
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultConstraints: 'PRIMARY KEY AUTOINCREMENT');
 
-  final GeneratedColumn<String> nombre = GeneratedColumn<String>(
+  late final GeneratedColumn<String> nombre = GeneratedColumn<String>(
       'nombre', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
 
-  final GeneratedColumn<String> telefono = GeneratedColumn<String>(
+  late final GeneratedColumn<String> telefono = GeneratedColumn<String>(
       'telefono', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
 
@@ -229,29 +229,29 @@ class $EquiposTable extends Equipos with TableInfo<Equipos, Equipo> {
 
   $EquiposTable(this.attachedDatabase, [this._alias]);
 
-  final GeneratedColumn<int> id = GeneratedColumn<int>(
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
       'id', aliasedName, false,
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultConstraints: 'PRIMARY KEY AUTOINCREMENT');
 
-  final GeneratedColumn<int> clienteId = GeneratedColumn<int>(
+  late final GeneratedColumn<int> clienteId = GeneratedColumn<int>(
       'cliente_id', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
 
-  final GeneratedColumn<String> tipo = GeneratedColumn<String>(
+  late final GeneratedColumn<String> tipo = GeneratedColumn<String>(
       'tipo', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
 
-  final GeneratedColumn<String> marca = GeneratedColumn<String>(
+  late final GeneratedColumn<String> marca = GeneratedColumn<String>(
       'marca', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
 
-  final GeneratedColumn<String> modelo = GeneratedColumn<String>(
+  late final GeneratedColumn<String> modelo = GeneratedColumn<String>(
       'modelo', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
 
-  final GeneratedColumn<String> numeroSerie = GeneratedColumn<String>(
+  late final GeneratedColumn<String> numeroSerie = GeneratedColumn<String>(
       'numero_serie', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
 
@@ -382,25 +382,25 @@ class $RepuestosTable extends Repuestos with TableInfo<Repuestos, Repuesto> {
 
   $RepuestosTable(this.attachedDatabase, [this._alias]);
 
-  final GeneratedColumn<int> id = GeneratedColumn<int>(
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
       'id', aliasedName, false,
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultConstraints: 'PRIMARY KEY AUTOINCREMENT');
 
-  final GeneratedColumn<String> codigo = GeneratedColumn<String>(
+  late final GeneratedColumn<String> codigo = GeneratedColumn<String>(
       'codigo', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
 
-  final GeneratedColumn<String> nombre = GeneratedColumn<String>(
+  late final GeneratedColumn<String> nombre = GeneratedColumn<String>(
       'nombre', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
 
-  final GeneratedColumn<double> precio = GeneratedColumn<double>(
+  late final GeneratedColumn<double> precio = GeneratedColumn<double>(
       'precio', aliasedName, false,
       type: DriftSqlType.double, requiredDuringInsert: true);
 
-  final GeneratedColumn<int> existencias = GeneratedColumn<int>(
+  late final GeneratedColumn<int> existencias = GeneratedColumn<int>(
       'existencias', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
 
@@ -543,29 +543,29 @@ class $OrdenesReparacionTable extends OrdenesReparacion
 
   $OrdenesReparacionTable(this.attachedDatabase, [this._alias]);
 
-  final GeneratedColumn<int> id = GeneratedColumn<int>(
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
       'id', aliasedName, false,
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultConstraints: 'PRIMARY KEY AUTOINCREMENT');
 
-  final GeneratedColumn<int> equipoId = GeneratedColumn<int>(
+  late final GeneratedColumn<int> equipoId = GeneratedColumn<int>(
       'equipo_id', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
 
-  final GeneratedColumn<String> fallaReportada = GeneratedColumn<String>(
+  late final GeneratedColumn<String> fallaReportada = GeneratedColumn<String>(
       'falla_reportada', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
 
-  final GeneratedColumn<String> estado = GeneratedColumn<String>(
+  late final GeneratedColumn<String> estado = GeneratedColumn<String>(
       'estado', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
 
-  final GeneratedColumn<String> tecnicoAsignado = GeneratedColumn<String>(
+  late final GeneratedColumn<String> tecnicoAsignado = GeneratedColumn<String>(
       'tecnico_asignado', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
 
-  final GeneratedColumn<DateTime> fechaCreacion = GeneratedColumn<DateTime>(
+  late final GeneratedColumn<DateTime> fechaCreacion = GeneratedColumn<DateTime>(
       'fecha_creacion', aliasedName, false,
       type: DriftSqlType.dateTime, requiredDuringInsert: true);
 
@@ -690,21 +690,21 @@ class $DetallesOrdenTrabajosTable extends DetallesOrdenTrabajos
 
   $DetallesOrdenTrabajosTable(this.attachedDatabase, [this._alias]);
 
-  final GeneratedColumn<int> id = GeneratedColumn<int>(
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
       'id', aliasedName, false,
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultConstraints: 'PRIMARY KEY AUTOINCREMENT');
 
-  final GeneratedColumn<int> ordenId = GeneratedColumn<int>(
+  late final GeneratedColumn<int> ordenId = GeneratedColumn<int>(
       'orden_id', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
 
-  final GeneratedColumn<String> descripcion = GeneratedColumn<String>(
+  late final GeneratedColumn<String> descripcion = GeneratedColumn<String>(
       'descripcion', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
 
-  final GeneratedColumn<double> costoManoDeObra = GeneratedColumn<double>(
+  late final GeneratedColumn<double> costoManoDeObra = GeneratedColumn<double>(
       'costo_mano_de_obra', aliasedName, false,
       type: DriftSqlType.double, requiredDuringInsert: true);
 
@@ -835,25 +835,25 @@ class $DetallesOrdenRepuestosTable extends DetallesOrdenRepuestos
 
   $DetallesOrdenRepuestosTable(this.attachedDatabase, [this._alias]);
 
-  final GeneratedColumn<int> id = GeneratedColumn<int>(
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
       'id', aliasedName, false,
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultConstraints: 'PRIMARY KEY AUTOINCREMENT');
 
-  final GeneratedColumn<int> ordenId = GeneratedColumn<int>(
+  late final GeneratedColumn<int> ordenId = GeneratedColumn<int>(
       'orden_id', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
 
-  final GeneratedColumn<int> repuestoId = GeneratedColumn<int>(
+  late final GeneratedColumn<int> repuestoId = GeneratedColumn<int>(
       'repuesto_id', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
 
-  final GeneratedColumn<int> cantidad = GeneratedColumn<int>(
+  late final GeneratedColumn<int> cantidad = GeneratedColumn<int>(
       'cantidad', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
 
-  final GeneratedColumn<double> precioUnitario = GeneratedColumn<double>(
+  late final GeneratedColumn<double> precioUnitario = GeneratedColumn<double>(
       'precio_unitario', aliasedName, false,
       type: DriftSqlType.double, requiredDuringInsert: true);
 
