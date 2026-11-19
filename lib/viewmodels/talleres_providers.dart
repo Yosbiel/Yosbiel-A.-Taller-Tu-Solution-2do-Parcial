@@ -32,3 +32,23 @@ final repuestosStockBajoProvider = FutureProvider.autoDispose<List<RepuestosData
   final dao = ref.watch(talleresDaoProvider);
   return await dao.obtenerRepuestosStockBajo();
 });
+
+// 6- Carga de trabajo activa por técnico
+final cargaTrabajoProvider = FutureProvider.autoDispose>((ref) async {
+  final dao = ref.watch(talleresDaoProvider);
+  return await dao.obtenerCargaTrabajoPorTecnico();
+});
+
+// 7- Historial de reparaciones por equipo (serie, marca, modelo o tipo)
+final historialEquipoProvider =
+    FutureProvider.autoDispose.family<List<HistorialOrdenItem>, String>((ref, filtro) async {
+  final dao = ref.watch(talleresDaoProvider);
+  return await dao.buscarHistorialPorEquipo(filtro);
+});
+
+// 8- Historial de reparaciones por cliente (nombre o teléfono)
+final historialClienteProvider =
+    FutureProvider.autoDispose.family<List<HistorialOrdenItem>, String>((ref, filtro) async {
+  final dao = ref.watch(talleresDaoProvider);
+  return await dao.buscarHistorialPorCliente(filtro);
+});

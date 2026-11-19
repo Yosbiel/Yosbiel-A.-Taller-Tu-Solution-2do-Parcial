@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../data/daos/talleres_dao.dart';
 import '../../data/database/app_database.dart';
 import '../../viewmodels/talleres_providers.dart';
-import 'consultas_screen.dart';
 
 class DetalleOrdenScreen extends ConsumerStatefulWidget {
   final OrdenesReparacionData orden;
@@ -20,21 +20,29 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
   final _trabajoCostoCtrl = TextEditingController();
 
   double _costoTotal = 0.0;
+  List<DetallesOrdenTrabajo> _trabajos = [];
+  List<RepuestoUsadoItem> _repuestosUsados = [];
+  bool _cargandoDetalles = true;
 
   @override
   void initState() {
     super.initState();
     _estadoActual = widget.orden.estado;
     _tecnicoCtrl.text = widget.orden.tecnicoAsignado ?? '';
-    _cargarCostoTotal();
+    _cargarDetallesYCosto();
   }
 
-  Future<void> _cargarCostoTotal() async {
+  Future<void> _cargarDetallesYCosto() async {
     final dao = ref.read(talleresDaoProvider);
+    final trabajos = await dao.obtenerTrabajosDeOrden(widget.orden.id);
+    final repuestos = await dao.obtenerRepuestosDeOrden(widget.orden.id);
     final total = await dao.calcularCostoTotalOrden(widget.orden.id);
     if (mounted) {
       setState(() {
+        _trabajos = trabajos;
+        _repuestosUsados = repuestos;
         _costoTotal = total;
+        _cargandoDetalles = false;
       });
     }
   }
@@ -95,7 +103,7 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
 
       _trabajoDescCtrl.clear();
       _trabajoCostoCtrl.clear();
-      await _cargarCostoTotal();
+      await _cargarDetallesYCosto();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -109,6 +117,112 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
         );
       }
     }
+  }
+
+  Future<void> _confirmarCantidadRepuesto(
+    BuildContext parentContext,
+    TalleresDao dao,
+    RepuestosData rep,
+  ) async {
+    int cantidad = 1;
+    final cantCtrl = TextEditingController(text: '1');
+
+    await showDialog(
+      context: parentContext,
+      builder: (dlgCtx) => StatefulBuilder(
+        builder: (ctx, setDlgState) {
+          void sincronizarCantidad(int nueva) {
+            if (nueva < 1) nueva = 1;
+            if (nueva > rep.existencias) nueva = rep.existencias;
+            setDlgState(() {
+              cantidad = nueva;
+              cantCtrl.text = nueva.toString();
+            });
+          }
+
+          return AlertDialog(
+            title: Text('Cantidad: ${rep.nombre}'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Stock disponible: ${rep.existencias} | Precio: \$${rep.precio.toStringAsFixed(2)}'),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.remove_circle_outline),
+                      onPressed: cantidad > 1 ? () => sincronizarCantidad(cantidad - 1) : null,
+                    ),
+                    SizedBox(
+                      width: 72,
+                      child: TextField(
+                        controller: cantCtrl,
+                        textAlign: TextAlign.center,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'Cant.'),
+                        onChanged: (val) {
+                          final parsed = int.tryParse(val.trim());
+                          if (parsed != null && parsed >= 1 && parsed <= rep.existencias) {
+                            setDlgState(() => cantidad = parsed);
+                          }
+                        },
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add_circle_outline),
+                      onPressed: cantidad < rep.existencias ? () => sincronizarCantidad(cantidad + 1) : null,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dlgCtx),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final finalCant = int.tryParse(cantCtrl.text.trim()) ?? cantidad;
+                  if (finalCant <= 0 || finalCant > rep.existencias) {
+                    ScaffoldMessenger.of(parentContext).showSnackBar(
+                      SnackBar(content: Text('Cantidad inválida (máx. ${rep.existencias}).')),
+                    );
+                    return;
+                  }
+                  try {
+                    await dao.agregarRepuestoAOrden(
+                      ordenId: widget.orden.id,
+                      repuesto: rep,
+                      cantidadUsada: finalCant,
+                    );
+                    ref.invalidate(todosRepuestosProvider);
+                    ref.invalidate(repuestosStockBajoProvider);
+                    await _cargarDetallesYCosto();
+                    if (dlgCtx.mounted) Navigator.pop(dlgCtx);
+                    if (parentContext.mounted) {
+                      ScaffoldMessenger.of(parentContext).showSnackBar(
+                        SnackBar(content: Text('Se agregaron $finalCant x ${rep.nombre}')),
+                      );
+                    }
+                  } catch (e) {
+                    if (parentContext.mounted) {
+                      ScaffoldMessenger.of(parentContext).showSnackBar(
+                        SnackBar(content: Text('Error al usar repuesto: $e')),
+                      );
+                    }
+                  }
+                },
+                child: const Text('Agregar'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    cantCtrl.dispose();
   }
 
   void _mostrarSelectorRepuestos(BuildContext context, WidgetRef ref) async {
@@ -132,30 +246,15 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
                     final rep = repuestos[index];
                     return ListTile(
                       title: Text(rep.nombre),
-                      subtitle: Text('Stock: ${rep.existencias} - \$${rep.precio}'),
+                      subtitle: Text('Stock: ${rep.existencias} - \$${rep.precio.toStringAsFixed(2)}'),
                       trailing: ElevatedButton(
                         onPressed: rep.existencias <= 0
                             ? null
                             : () async {
-                                try {
-                                  await dao.agregarRepuestoAOrden(
-                                    ordenId: widget.orden.id,
-                                    repuesto: rep,
-                                    cantidadUsada: 1,
-                                  );
-                                  ref.invalidate(todosRepuestosProvider);
-                                  ref.invalidate(repuestosStockBajoProvider);
-                                  await _cargarCostoTotal();
-                                  if (ctx.mounted) Navigator.pop(ctx);
-                                } catch (e) {
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('Error al usar repuesto: $e')),
-                                    );
-                                  }
-                                }
+                                Navigator.pop(ctx);
+                                await _confirmarCantidadRepuesto(context, dao, rep);
                               },
-                        child: const Text('Usar (1)'),
+                        child: const Text('Elegir'),
                       ),
                     );
                   },
@@ -223,7 +322,7 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
             onPressed: _agregarTrabajo,
             child: const Text('Agregar Trabajo'),
           ),
-          const Divider(height: 32),
+          const SizedBox(height: 16),
 
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
@@ -231,6 +330,48 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
             icon: const Icon(Icons.build_circle),
             label: const Text('Añadir Repuesto del Almacén'),
           ),
+          const Divider(height: 32),
+
+          const Text('Trabajos Registrados', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 6),
+          if (_cargandoDetalles)
+            const Center(child: CircularProgressIndicator())
+          else if (_trabajos.isEmpty)
+            const Text('Aún no hay trabajos registrados en esta orden.')
+          else
+            ..._trabajos.map(
+              (t) => Card(
+                child: ListTile(
+                  title: Text(t.descripcion),
+                  trailing: Text(
+                    '\$${t.costoManoDeObra.toStringAsFixed(2)}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ),
+          const SizedBox(height: 16),
+
+          const Text('Repuestos Utilizados', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 6),
+          if (!_cargandoDetalles)
+            if (_repuestosUsados.isEmpty)
+              const Text('Aún no se han utilizado repuestos en esta orden.')
+            else
+              ..._repuestosUsados.map(
+                (item) => Card(
+                  child: ListTile(
+                    title: Text('${item.repuesto.nombre} (${item.repuesto.codigo})'),
+                    subtitle: Text(
+                      'Cantidad: ${item.detalle.cantidad} x \$${item.detalle.precioUnitario.toStringAsFixed(2)}',
+                    ),
+                    trailing: Text(
+                      '\$${(item.detalle.cantidad * item.detalle.precioUnitario).toStringAsFixed(2)}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ),
         ],
       ),
     );
