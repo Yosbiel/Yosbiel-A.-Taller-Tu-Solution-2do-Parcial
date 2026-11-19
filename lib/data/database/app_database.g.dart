@@ -91,7 +91,6 @@ class $ClientesTable extends Clientes with TableInfo<Clientes, Cliente> {
       'id', aliasedName, false,
       type: DriftSqlType.int,
       requiredDuringInsert: false,
-      defaultConstraints: 'PRIMARY KEY AUTOINCREMENT');
 
   late final GeneratedColumn<String> nombre = GeneratedColumn<String>(
       'nombre', aliasedName, false,
@@ -233,7 +232,6 @@ class $EquiposTable extends Equipos with TableInfo<Equipos, Equipo> {
       'id', aliasedName, false,
       type: DriftSqlType.int,
       requiredDuringInsert: false,
-      defaultConstraints: 'PRIMARY KEY AUTOINCREMENT');
 
   late final GeneratedColumn<int> clienteId = GeneratedColumn<int>(
       'cliente_id', aliasedName, false,
@@ -386,7 +384,6 @@ class $RepuestosTable extends Repuestos with TableInfo<Repuestos, Repuesto> {
       'id', aliasedName, false,
       type: DriftSqlType.int,
       requiredDuringInsert: false,
-      defaultConstraints: 'PRIMARY KEY AUTOINCREMENT');
 
   late final GeneratedColumn<String> codigo = GeneratedColumn<String>(
       'codigo', aliasedName, false,
@@ -547,7 +544,6 @@ class $OrdenesReparacionTable extends OrdenesReparacion
       'id', aliasedName, false,
       type: DriftSqlType.int,
       requiredDuringInsert: false,
-      defaultConstraints: 'PRIMARY KEY AUTOINCREMENT');
 
   late final GeneratedColumn<int> equipoId = GeneratedColumn<int>(
       'equipo_id', aliasedName, false,
@@ -694,7 +690,6 @@ class $DetallesOrdenTrabajosTable extends DetallesOrdenTrabajos
       'id', aliasedName, false,
       type: DriftSqlType.int,
       requiredDuringInsert: false,
-      defaultConstraints: 'PRIMARY KEY AUTOINCREMENT');
 
   late final GeneratedColumn<int> ordenId = GeneratedColumn<int>(
       'orden_id', aliasedName, false,
@@ -839,7 +834,6 @@ class $DetallesOrdenRepuestosTable extends DetallesOrdenRepuestos
       'id', aliasedName, false,
       type: DriftSqlType.int,
       requiredDuringInsert: false,
-      defaultConstraints: 'PRIMARY KEY AUTOINCREMENT');
 
   late final GeneratedColumn<int> ordenId = GeneratedColumn<int>(
       'orden_id', aliasedName, false,
