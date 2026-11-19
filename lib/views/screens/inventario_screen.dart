@@ -24,7 +24,7 @@ class InventarioScreen extends ConsumerWidget {
               TextField(
                 controller: precioCtrl,
                 decoration: const InputDecoration(labelText: 'Precio'),
-                keyboardType: TextInputType.number,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),
               TextField(
                 controller: stockCtrl,
@@ -38,16 +38,37 @@ class InventarioScreen extends ConsumerWidget {
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
           ElevatedButton(
             onPressed: () async {
-              final dao = ref.read(talleresDaoProvider);
-              await dao.insertarRepuesto(
-                codigoCtrl.text.trim(),
-                nombreCtrl.text.trim(),
-                double.tryParse(precioCtrl.text) ?? 0.0,
-                int.tryParse(stockCtrl.text) ?? 0,
-              );
-              ref.invalidate(todosRepuestosProvider);
-              ref.invalidate(repuestosStockBajoProvider);
-              if (ctx.mounted) Navigator.pop(ctx);
+              final codigo = codigoCtrl.text.trim();
+              final nombre = nombreCtrl.text.trim();
+              final precio = double.tryParse(precioCtrl.text.trim().replaceAll(',', '.'));
+              final stock = int.tryParse(stockCtrl.text.trim());
+
+              if (codigo.isEmpty || nombre.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Código y nombre son obligatorios.')),
+                );
+                return;
+              }
+              if (precio == null || precio < 0 || stock == null || stock < 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Ingresa precio y existencias válidas (0 o mayores).')),
+                );
+                return;
+              }
+
+              try {
+                final dao = ref.read(talleresDaoProvider);
+                await dao.insertarRepuesto(codigo, nombre, precio, stock);
+                ref.invalidate(todosRepuestosProvider);
+                ref.invalidate(repuestosStockBajoProvider);
+                if (ctx.mounted) Navigator.pop(ctx);
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error al guardar repuesto: $e')),
+                  );
+                }
+              }
             },
             child: const Text('Guardar'),
           ),

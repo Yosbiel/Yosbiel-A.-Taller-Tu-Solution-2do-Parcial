@@ -12,7 +12,6 @@ class NuevaOrdenScreen extends ConsumerStatefulWidget {
 class _NuevaOrdenScreenState extends ConsumerState<NuevaOrdenScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controladores de texto para capturar los datos del formulario
   final _nombreCtrl = TextEditingController();
   final _telefonoCtrl = TextEditingController();
   final _marcaCtrl = TextEditingController();
@@ -20,7 +19,8 @@ class _NuevaOrdenScreenState extends ConsumerState<NuevaOrdenScreen> {
   final _serieCtrl = TextEditingController();
   final _fallaCtrl = TextEditingController();
 
-  String _tipoSeleccionado = 'Celular'; // Valor por defecto
+  String _tipoSeleccionado = 'Celular';
+  bool _guardando = false;
 
   @override
   void dispose() {
@@ -33,25 +33,45 @@ class _NuevaOrdenScreenState extends ConsumerState<NuevaOrdenScreen> {
     super.dispose();
   }
 
+  String? _validarObligatorio(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Campo obligatorio';
+    }
+    return null;
+  }
+
   Future<void> _guardarOrden() async {
+    if (_guardando) return;
     if (_formKey.currentState!.validate()) {
-      final dao = ref.read(talleresDaoProvider);
+      setState(() => _guardando = true);
+      try {
+        final dao = ref.read(talleresDaoProvider);
 
-      await dao.registrarNuevaOrdenCompleta(
-        nombreCliente: _nombreCtrl.text.trim(),
-        telefonoCliente: _telefonoCtrl.text.trim(),
-        tipoEquipo: _tipoSeleccionado,
-        marca: _marcaCtrl.text.trim(),
-        modelo: _modeloCtrl.text.trim(),
-        numeroSerie: _serieCtrl.text.trim(),
-        fallaReportada: _fallaCtrl.text.trim(),
-      );
+        await dao.registrarNuevaOrdenCompleta(
+          nombreCliente: _nombreCtrl.text.trim(),
+          telefonoCliente: _telefonoCtrl.text.trim(),
+          tipoEquipo: _tipoSeleccionado,
+          marca: _marcaCtrl.text.trim(),
+          modelo: _modeloCtrl.text.trim(),
+          numeroSerie: _serieCtrl.text.trim(),
+          fallaReportada: _fallaCtrl.text.trim(),
+        );
 
-      // Refrescamos el provider de órdenes abiertas para que la lista se actualice
-      ref.invalidate(ordenesAbiertasProvider);
+        ref.invalidate(ordenesAbiertasProvider);
 
-      if (mounted) {
-        Navigator.pop(context); // Regresamos a la pantalla principal
+        if (mounted) {
+          Navigator.pop(context);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error al registrar la orden: $e')),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _guardando = false);
+        }
       }
     }
   }
@@ -69,13 +89,13 @@ class _NuevaOrdenScreenState extends ConsumerState<NuevaOrdenScreen> {
             TextFormField(
               controller: _nombreCtrl,
               decoration: const InputDecoration(labelText: 'Nombre del dueño'),
-              validator: (v) => v!.isEmpty ? 'Campo obligatorio' : null,
+              validator: _validarObligatorio,
             ),
             TextFormField(
               controller: _telefonoCtrl,
               decoration: const InputDecoration(labelText: 'Teléfono'),
               keyboardType: TextInputType.phone,
-              validator: (v) => v!.isEmpty ? 'Campo obligatorio' : null,
+              validator: _validarObligatorio,
             ),
             const SizedBox(height: 20),
             const Text('Datos del Equipo', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
@@ -85,33 +105,35 @@ class _NuevaOrdenScreenState extends ConsumerState<NuevaOrdenScreen> {
               items: ['Celular', 'Tablet', 'Laptop']
                   .map((tipo) => DropdownMenuItem(value: tipo, child: Text(tipo)))
                   .toList(),
-              onChanged: (val) => setState(() => _tipoSeleccionado = val!),
+              onChanged: (val) {
+                if (val != null) setState(() => _tipoSeleccionado = val);
+              },
             ),
             TextFormField(
               controller: _marcaCtrl,
               decoration: const InputDecoration(labelText: 'Marca'),
-              validator: (v) => v!.isEmpty ? 'Campo obligatorio' : null,
+              validator: _validarObligatorio,
             ),
             TextFormField(
               controller: _modeloCtrl,
               decoration: const InputDecoration(labelText: 'Modelo'),
-              validator: (v) => v!.isEmpty ? 'Campo obligatorio' : null,
+              validator: _validarObligatorio,
             ),
             TextFormField(
               controller: _serieCtrl,
               decoration: const InputDecoration(labelText: 'Número de serie'),
-              validator: (v) => v!.isEmpty ? 'Campo obligatorio' : null,
+              validator: _validarObligatorio,
             ),
             TextFormField(
               controller: _fallaCtrl,
               decoration: const InputDecoration(labelText: 'Falla reportada'),
               maxLines: 2,
-              validator: (v) => v!.isEmpty ? 'Campo obligatorio' : null,
+              validator: _validarObligatorio,
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: _guardarOrden,
-              child: const Text('Registrar Orden'),
+              onPressed: _guardando ? null : _guardarOrden,
+              child: Text(_guardando ? 'Guardando...' : 'Registrar Orden'),
             ),
           ],
         ),
