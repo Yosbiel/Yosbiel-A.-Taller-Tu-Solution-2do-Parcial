@@ -17,3 +17,4 @@ workflows:
           flutter build apk --release --split-per-abi
     artifacts:
       - build/app/outputs/flutter-apk/*.apk
+      - lib/**/*.g.dart
