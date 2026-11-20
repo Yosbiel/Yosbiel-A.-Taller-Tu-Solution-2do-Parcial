@@ -61,7 +61,7 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
       await dao.actualizarEstadoYTecnico(
         widget.orden.id,
         _estadoActual,
-        _tecnicoCtrl.text.trim(),
+        tecnico: _tecnicoCtrl.text.trim(),
       );
       ref.invalidate(ordenesAbiertasProvider);
       ref.invalidate(cargaTrabajoProvider);
@@ -194,7 +194,7 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
                   try {
                     await dao.agregarRepuestoAOrden(
                       ordenId: widget.orden.id,
-                      repuesto: rep,
+                      repuestoId: rep.id,
                       cantidadUsada: finalCant,
                     );
                     ref.invalidate(todosRepuestosProvider);

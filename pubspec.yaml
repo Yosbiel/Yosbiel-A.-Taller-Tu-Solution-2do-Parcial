@@ -1,6 +1,6 @@
 name: tusolution
-description: "Sistema de gestión para taller de reparaciones Tu Solution"
-publish_to: "none" # Evita que se publique por accidente en pub.dev
+description: "Sistema de gestion para taller de reparaciones Tu Solution"
+publish_to: "none"
 
 version: 1.0.0+1
 
@@ -10,8 +10,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  
-  # Gestión de estado reactiva
+
+  # Gestion de estado reactiva
   flutter_riverpod: ^2.4.9
 
   # Base de datos local (Drift y SQLite)
@@ -25,9 +25,22 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^3.0.0
 
-  # Herramientas obligatorias para generar el código de Drift (.g.dart)
+  # Herramientas obligatorias para generar el codigo de Drift (.g.dart)
   build_runner: ^2.4.8
   drift_dev: ^2.14.0
 
 flutter:
   uses-material-design: true
+
+  # Fuentes Poppins bundleadas con la app.
+  # Se usaran en el theme a partir de la Parte 3.
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+        - asset: assets/fonts/Poppins-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Poppins-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700
