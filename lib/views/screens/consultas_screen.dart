@@ -118,10 +118,6 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
         : (mostrarCliente
             ? ref.watch(historialClienteProvider(busqueda))
             : ref.watch(historialEquipoProvider(busqueda)));
-        ? ref.watch(historialCompletoProvider)
-        : (mostrarCliente
-            ? ref.watch(historialClienteProvider(busqueda))
-            : ref.watch(historialEquipoProvider(busqueda)));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
