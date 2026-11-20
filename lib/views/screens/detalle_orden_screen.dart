@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/daos/talleres_dao.dart';
 import '../../data/database/app_database.dart';
+import '../../viewmodels/detalle_orden_viewmodel.dart';
 import '../../viewmodels/talleres_providers.dart';
+import '../widgets/estado_pildora.dart';
 
 class DetalleOrdenScreen extends ConsumerStatefulWidget {
   final OrdenesReparacionData orden;
-
   const DetalleOrdenScreen({Key? key, required this.orden}) : super(key: key);
 
   @override
@@ -19,32 +20,11 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
   final _trabajoDescCtrl = TextEditingController();
   final _trabajoCostoCtrl = TextEditingController();
 
-  double _costoTotal = 0.0;
-  List<DetallesOrdenTrabajo> _trabajos = [];
-  List<RepuestoUsadoItem> _repuestosUsados = [];
-  bool _cargandoDetalles = true;
-
   @override
   void initState() {
     super.initState();
     _estadoActual = widget.orden.estado;
     _tecnicoCtrl.text = widget.orden.tecnicoAsignado ?? '';
-    _cargarDetallesYCosto();
-  }
-
-  Future<void> _cargarDetallesYCosto() async {
-    final dao = ref.read(talleresDaoProvider);
-    final trabajos = await dao.obtenerTrabajosDeOrden(widget.orden.id);
-    final repuestos = await dao.obtenerRepuestosDeOrden(widget.orden.id);
-    final total = await dao.calcularCostoTotalOrden(widget.orden.id);
-    if (mounted) {
-      setState(() {
-        _trabajos = trabajos;
-        _repuestosUsados = repuestos;
-        _costoTotal = total;
-        _cargandoDetalles = false;
-      });
-    }
   }
 
   @override
@@ -55,324 +35,283 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
     super.dispose();
   }
 
-  Future<void> _guardarCambios() async {
+  Future<void> _guardarCambios(DetalleOrdenViewModel vm) async {
     try {
-      final dao = ref.read(talleresDaoProvider);
-      await dao.actualizarEstadoYTecnico(
-        widget.orden.id,
-        _estadoActual,
-        tecnico: _tecnicoCtrl.text.trim(),
+      await vm.guardarCambios(_estadoActual, _tecnicoCtrl.text.trim());
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Orden actualizada correctamente')),
       );
-      ref.invalidate(ordenesAbiertasProvider);
-      ref.invalidate(cargaTrabajoProvider);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Orden actualizada correctamente')),
-        );
-      }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al actualizar orden: $e')),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al actualizar: $e')),
+      );
     }
   }
 
-  Future<void> _agregarTrabajo() async {
+  Future<void> _agregarTrabajo(DetalleOrdenViewModel vm) async {
     final descripcion = _trabajoDescCtrl.text.trim();
-    final costo = double.tryParse(_trabajoCostoCtrl.text.trim().replaceAll(',', '.'));
-
+    final costo =
+        double.tryParse(_trabajoCostoCtrl.text.trim().replaceAll(',', '.'));
     if (descripcion.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ingresa una descripción del trabajo.')),
+        const SnackBar(content: Text('Ingresa una descripcion del trabajo.')),
       );
       return;
     }
-
     if (costo == null || costo <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ingresa un costo de mano de obra mayor a 0.')),
+        const SnackBar(content: Text('Ingresa un costo mayor a 0.')),
       );
       return;
     }
-
     try {
-      final dao = ref.read(talleresDaoProvider);
-      await dao.insertarTrabajo(widget.orden.id, descripcion, costo);
-
+      await vm.agregarTrabajo(descripcion, costo);
       _trabajoDescCtrl.clear();
       _trabajoCostoCtrl.clear();
-      await _cargarDetallesYCosto();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Mano de obra registrada')),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Mano de obra registrada')),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al registrar mano de obra: $e')),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
     }
   }
 
-  Future<void> _confirmarCantidadRepuesto(
-    BuildContext parentContext,
-    TalleresDao dao,
-    RepuestosData rep,
+  Future<void> _mostrarSelectorRepuestos(
+    DetalleOrdenViewModel vm,
   ) async {
-    int cantidad = 1;
-    final cantCtrl = TextEditingController(text: '1');
-
-    await showDialog(
-      context: parentContext,
-      builder: (dlgCtx) => StatefulBuilder(
-        builder: (ctx, setDlgState) {
-          void sincronizarCantidad(int nueva) {
-            if (nueva < 1) nueva = 1;
-            if (nueva > rep.existencias) nueva = rep.existencias;
-            setDlgState(() {
-              cantidad = nueva;
-              cantCtrl.text = nueva.toString();
-            });
-          }
-
-          return AlertDialog(
-            title: Text('Cantidad: ${rep.nombre}'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('Stock disponible: ${rep.existencias} | Precio: \$${rep.precio.toStringAsFixed(2)}'),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.remove_circle_outline),
-                      onPressed: cantidad > 1 ? () => sincronizarCantidad(cantidad - 1) : null,
-                    ),
-                    SizedBox(
-                      width: 72,
-                      child: TextField(
-                        controller: cantCtrl,
-                        textAlign: TextAlign.center,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Cant.'),
-                        onChanged: (val) {
-                          final parsed = int.tryParse(val.trim());
-                          if (parsed != null && parsed >= 1 && parsed <= rep.existencias) {
-                            setDlgState(() => cantidad = parsed);
-                          }
-                        },
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.add_circle_outline),
-                      onPressed: cantidad < rep.existencias ? () => sincronizarCantidad(cantidad + 1) : null,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dlgCtx),
-                child: const Text('Cancelar'),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  final finalCant = int.tryParse(cantCtrl.text.trim()) ?? cantidad;
-                  if (finalCant <= 0 || finalCant > rep.existencias) {
-                    ScaffoldMessenger.of(parentContext).showSnackBar(
-                      SnackBar(content: Text('Cantidad inválida (máx. ${rep.existencias}).')),
-                    );
-                    return;
-                  }
-                  try {
-                    await dao.agregarRepuestoAOrden(
-                      ordenId: widget.orden.id,
-                      repuestoId: rep.id,
-                      cantidadUsada: finalCant,
-                    );
-                    ref.invalidate(todosRepuestosProvider);
-                    ref.invalidate(repuestosStockBajoProvider);
-                    await _cargarDetallesYCosto();
-                    if (dlgCtx.mounted) Navigator.pop(dlgCtx);
-                    if (parentContext.mounted) {
-                      ScaffoldMessenger.of(parentContext).showSnackBar(
-                        SnackBar(content: Text('Se agregaron $finalCant x ${rep.nombre}')),
-                      );
-                    }
-                  } catch (e) {
-                    if (parentContext.mounted) {
-                      ScaffoldMessenger.of(parentContext).showSnackBar(
-                        SnackBar(content: Text('Error al usar repuesto: $e')),
-                      );
-                    }
-                  }
-                },
-                child: const Text('Agregar'),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-
-    cantCtrl.dispose();
-  }
-
-  void _mostrarSelectorRepuestos(BuildContext context, WidgetRef ref) async {
     final dao = ref.read(talleresDaoProvider);
     final repuestos = await dao.obtenerTodosRepuestos();
-
-    if (!context.mounted) return;
-
-    showDialog(
+    if (!mounted) return;
+    if (repuestos.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No hay repuestos en el almacen.')),
+      );
+      return;
+    }
+    final seleccionado = await showDialog<RepuestosData>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Seleccionar Repuesto'),
+        title: const Text('Seleccionar repuesto'),
         content: SizedBox(
           width: double.maxFinite,
-          child: repuestos.isEmpty
-              ? const Text('No hay repuestos en el almacén.')
-              : ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: repuestos.length,
-                  itemBuilder: (context, index) {
-                    final rep = repuestos[index];
-                    return ListTile(
-                      title: Text(rep.nombre),
-                      subtitle: Text('Stock: ${rep.existencias} - \$${rep.precio.toStringAsFixed(2)}'),
-                      trailing: ElevatedButton(
-                        onPressed: rep.existencias <= 0
-                            ? null
-                            : () async {
-                                Navigator.pop(ctx);
-                                await _confirmarCantidadRepuesto(context, dao, rep);
-                              },
-                        child: const Text('Elegir'),
-                      ),
-                    );
-                  },
-                ),
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: repuestos.length,
+            itemBuilder: (_, i) {
+              final r = repuestos[i];
+              return ListTile(
+                title: Text(r.nombre),
+                subtitle: Text('Stock: ${r.existencias} | \$${r.precio.toStringAsFixed(2)}'),
+                enabled: r.existencias > 0,
+                onTap: r.existencias > 0 ? () => Navigator.pop(ctx, r) : null,
+              );
+            },
+          ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cerrar')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
         ],
       ),
     );
+    if (seleccionado == null || !mounted) return;
+
+    final cantidad = await showDialog<int>(
+      context: context,
+      builder: (ctx) {
+        final ctrl = TextEditingController(text: '1');
+        return AlertDialog(
+          title: Text(seleccionado.nombre),
+          content: TextField(
+            controller: ctrl,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: 'Cantidad (max ${seleccionado.existencias})',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final n = int.tryParse(ctrl.text.trim());
+                if (n == null || n <= 0 || n > seleccionado.existencias) return;
+                Navigator.pop(ctx, n);
+              },
+              child: const Text('Agregar'),
+            ),
+          ],
+        );
+      },
+    );
+    if (cantidad == null || !mounted) return;
+    try {
+      await vm.agregarRepuesto(seleccionado.id, cantidad);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Se agregaron $cantidad x ${seleccionado.nombre}')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final async = ref.watch(detalleOrdenProvider(widget.orden));
     return Scaffold(
-      appBar: AppBar(title: Text('Orden #${widget.orden.id}')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text(
-            'Falla reportada: ${widget.orden.fallaReportada}',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Costo Total Acumulado: \$${_costoTotal.toStringAsFixed(2)}',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
-          ),
-          const Divider(height: 24),
-
-          TextField(
-            controller: _tecnicoCtrl,
-            decoration: const InputDecoration(labelText: 'Técnico responsable'),
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            value: _estadoActual,
-            decoration: const InputDecoration(labelText: 'Estado de la orden'),
-            items: ['recibida', 'en_reparacion', 'lista', 'entregada', 'cancelada']
-                .map((estado) => DropdownMenuItem(value: estado, child: Text(estado)))
-                .toList(),
-            onChanged: (val) {
-              if (val != null) setState(() => _estadoActual = val);
-            },
-          ),
-          const SizedBox(height: 12),
-          ElevatedButton(
-            onPressed: _guardarCambios,
-            child: const Text('Guardar Cambios de la Orden'),
-          ),
-          const Divider(height: 32),
-
-          const Text('Registrar Mano de Obra', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          TextField(
-            controller: _trabajoDescCtrl,
-            decoration: const InputDecoration(labelText: 'Descripción del trabajo realizado'),
-          ),
-          TextField(
-            controller: _trabajoCostoCtrl,
-            decoration: const InputDecoration(labelText: 'Costo de mano de obra'),
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          ),
-          const SizedBox(height: 12),
-          ElevatedButton(
-            onPressed: _agregarTrabajo,
-            child: const Text('Agregar Trabajo'),
-          ),
-          const SizedBox(height: 16),
-
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
-            onPressed: () => _mostrarSelectorRepuestos(context, ref),
-            icon: const Icon(Icons.build_circle),
-            label: const Text('Añadir Repuesto del Almacén'),
-          ),
-          const Divider(height: 32),
-
-          const Text('Trabajos Registrados', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          const SizedBox(height: 6),
-          if (_cargandoDetalles)
-            const Center(child: CircularProgressIndicator())
-          else if (_trabajos.isEmpty)
-            const Text('Aún no hay trabajos registrados en esta orden.')
-          else
-            ..._trabajos.map(
-              (t) => Card(
-                child: ListTile(
-                  title: Text(t.descripcion),
-                  trailing: Text(
-                    '\$${t.costoManoDeObra.toStringAsFixed(2)}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-            ),
-          const SizedBox(height: 16),
-
-          const Text('Repuestos Utilizados', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          const SizedBox(height: 6),
-          if (!_cargandoDetalles)
-            if (_repuestosUsados.isEmpty)
-              const Text('Aún no se han utilizado repuestos en esta orden.')
-            else
-              ..._repuestosUsados.map(
-                (item) => Card(
-                  child: ListTile(
-                    title: Text('${item.repuesto.nombre} (${item.repuesto.codigo})'),
-                    subtitle: Text(
-                      'Cantidad: ${item.detalle.cantidad} x \$${item.detalle.precioUnitario.toStringAsFixed(2)}',
-                    ),
-                    trailing: Text(
-                      '\$${(item.detalle.cantidad * item.detalle.precioUnitario).toStringAsFixed(2)}',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+      appBar: AppBar(
+        title: Text('Orden #${widget.orden.id}'),
+        actions: const [],
+      ),
+      body: async.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (state) {
+          final vm = ref.read(detalleOrdenProvider(widget.orden).notifier);
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Falla: ${widget.orden.fallaReportada}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
+                  EstadoPildora(estado: _estadoActual),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Costo total: \$${state.costoTotal.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green,
                 ),
               ),
-        ],
+              const Divider(height: 24),
+              TextField(
+                controller: _tecnicoCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Tecnico responsable',
+                ),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: _estadoActual,
+                decoration: const InputDecoration(labelText: 'Estado'),
+                items: const ['recibida', 'en_reparacion', 'lista', 'entregada', 'cancelada']
+                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                    .toList(),
+                onChanged: (v) {
+                  if (v != null) setState(() => _estadoActual = v);
+                },
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: state.guardando ? null : () => _guardarCambios(vm),
+                child: Text(state.guardando ? 'Guardando...' : 'Guardar cambios'),
+              ),
+              const Divider(height: 32),
+              const Text(
+                'Registrar mano de obra',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              TextField(
+                controller: _trabajoDescCtrl,
+                decoration: const InputDecoration(labelText: 'Descripcion'),
+              ),
+              TextField(
+                controller: _trabajoCostoCtrl,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(labelText: 'Costo'),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed:
+                    state.guardando ? null : () => _agregarTrabajo(vm),
+                child: const Text('Agregar trabajo'),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: state.guardando
+                    ? null
+                    : () => _mostrarSelectorRepuestos(vm),
+                icon: const Icon(Icons.build_circle),
+                label: const Text('Anadir repuesto'),
+              ),
+              const Divider(height: 32),
+              const Text(
+                'Trabajos registrados',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 6),
+              if (state.trabajos.isEmpty)
+                const Text('Aun no hay trabajos.')
+              else
+                ...state.trabajos.map(
+                  (t) => Card(
+                    child: ListTile(
+                      title: Text(t.descripcion),
+                      trailing: Text(
+                        '\$${t.costoManoDeObra.toStringAsFixed(2)}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 16),
+              const Text(
+                'Repuestos utilizados',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 6),
+              if (state.repuestos.isEmpty)
+                const Text('Aun no se han usado repuestos.')
+              else
+                ...state.repuestos.map(
+                  (item) => Card(
+                    child: ListTile(
+                      title: Text(
+                        '${item.repuesto.nombre} (${item.repuesto.codigo})',
+                      ),
+                      subtitle: Text(
+                        '${item.detalle.cantidad} x \$${item.detalle.precioUnitario.toStringAsFixed(2)}',
+                      ),
+                      trailing: Text(
+                        '\$${(item.detalle.cantidad * item.detalle.precioUnitario).toStringAsFixed(2)}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
