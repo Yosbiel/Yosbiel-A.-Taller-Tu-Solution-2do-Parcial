@@ -28,7 +28,7 @@ final repuestosStockBajoProvider = FutureProvider.autoDispose<List<RepuestosData
   return await dao.obtenerRepuestosStockBajo();
 });
 
-final cargaTrabajoProvider = FutureProvider.autoDispose>((ref) async {
+final cargaTrabajoProvider = FutureProvider.autoDispose<Map<String, int>>((ref) async {
   final dao = ref.watch(talleresDaoProvider);
   return await dao.obtenerCargaTrabajoPorTecnico();
 });
