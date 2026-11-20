@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/daos/talleres_dao.dart';
+import '../../data/database/app_database.dart';
 import '../../viewmodels/talleres_providers.dart';
 import '../widgets/estado_pildora.dart';
 import 'detalle_orden_screen.dart';
@@ -105,52 +106,32 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
     );
   }
 
-  Widget _seccionHistorial({
-    required String titulo,
-    required TextEditingController ctrl,
-    required String busqueda,
-    required void Function(String) onChanged,
-    required bool mostrarCliente,
-  }) {
-    final theme = Theme.of(context);
-    final async = busqueda.isEmpty
-        ? ref.watch(historialCompletoProvider)
-        : (mostrarCliente
-            ? ref.watch(historialClienteProvider(busqueda))
-            : ref.watch(historialEquipoProvider(busqueda)));
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(titulo,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        TextField(
-          controller: ctrl,
-          decoration: InputDecoration(
-            labelText: 'Escribe para filtrar',
-            prefixIcon: Icon(Icons.search, color: theme.colorScheme.primary),
+  // Tarjeta simple para cuando se muestran TODAS las ordenes (sin join)
+  Widget _tarjetaSimple(OrdenesReparacionData orden) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        title: Text('Falla: ${orden.fallaReportada}'),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Row(
+            children: [
+              EstadoPildora(estado: orden.estado),
+              const SizedBox(width: 8),
+              Text('Fecha: ${_formatearFecha(orden.fechaCreacion)}'),
+            ],
           ),
-          onChanged: onChanged,
         ),
-        const SizedBox(height: 10),
-        async.when(
-          loading: () => const Padding(
-            padding: EdgeInsets.all(8.0),
-            child: Center(child: CircularProgressIndicator()),
-          ),
-          error: (e, _) => Text('Error: $e'),
-          data: (res) {
-            if (res.isEmpty) {
-              return const Text('Sin resultados.');
-            }
-            return Column(
-              children: res
-                  .map((i) => _tarjeta(i, mostrarCliente: mostrarCliente))
-                  .toList(),
-            );
-          },
-        ),
-      ],
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => DetalleOrdenScreen(orden: orden),
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -268,6 +249,68 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
             ],
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _seccionHistorial({
+    required String titulo,
+    required TextEditingController ctrl,
+    required String busqueda,
+    required void Function(String) onChanged,
+    required bool mostrarCliente,
+  }) {
+    final theme = Theme.of(context);
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(titulo,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: ctrl,
+          decoration: InputDecoration(
+            labelText: 'Escribe para filtrar',
+            prefixIcon: Icon(Icons.search, color: theme.colorScheme.primary),
+          ),
+          onChanged: onChanged,
+        ),
+        const SizedBox(height: 10),
+        
+        // AQUI ESTA LA MAGIA: Si no hay busqueda, usa el Stream completo.
+        // Si hay busqueda, usa el FutureProvider de filtro.
+        if (busqueda.isEmpty)
+          ref.watch(historialCompletoProvider).when(
+            loading: () => const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (e, _) => Text('Error: $e'),
+            data: (res) {
+              if (res.isEmpty) return const Text('Sin resultados.');
+              return Column(
+                children: res.map((o) => _tarjetaSimple(o)).toList(),
+              );
+            },
+          )
+        else
+          (mostrarCliente
+            ? ref.watch(historialClienteProvider(busqueda))
+            : ref.watch(historialEquipoProvider(busqueda))
+          ).when(
+            loading: () => const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (e, _) => Text('Error: $e'),
+            data: (res) {
+              if (res.isEmpty) return const Text('Sin resultados.');
+              return Column(
+                children: res.map((i) => _tarjeta(i, mostrarCliente: mostrarCliente)).toList(),
+              );
+            },
+          ),
       ],
     );
   }

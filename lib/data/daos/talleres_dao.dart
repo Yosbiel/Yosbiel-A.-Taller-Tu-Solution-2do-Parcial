@@ -648,3 +648,10 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
     return result;
   }
 }
+
+  // Devuelve todas las ordenes sin join, ordenadas por fecha.
+  Stream<List<OrdenesReparacionData>> watchTodasLasOrdenes() {
+    return (select(db.ordenesReparacion)
+          ..orderBy([(t) => OrderingTerm.desc(t.fechaCreacion)]))
+        .watch();
+  }
