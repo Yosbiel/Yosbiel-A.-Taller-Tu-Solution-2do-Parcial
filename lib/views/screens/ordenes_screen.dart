@@ -1,56 +1,57 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../data/daos/talleres_dao.dart';
 import '../../viewmodels/talleres_providers.dart';
+import '../widgets/estado_pildora.dart';
 import 'nueva_orden_screen.dart';
 import 'detalle_orden_screen.dart';
 
-// Usamos ConsumerWidget para poder escuchar los providers de Riverpod fácilmente
 class OrdenesScreen extends ConsumerWidget {
   const OrdenesScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Escuchamos el StreamProvider de órdenes abiertas
     final ordenesAsync = ref.watch(ordenesAbiertasProvider);
+    final tecnicosAsync = ref.watch(tecnicosProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tu Solution - Taller'),
-      ),
+      appBar: AppBar(title: const Text('Tu Solution - Taller')),
       body: ordenesAsync.when(
-        // 1- Mientras cargan los datos de la base de datos local (Drift)
         loading: () => const Center(child: CircularProgressIndicator()),
-        
-        // 2- Si ocurre algún error en la consulta
-        error: (err, stack) => Center(child: Text('Error al cargar órdenes: $err')),
-        
-        // 3- Cuando los datos llegan correctamente
+        error: (err, _) => Center(child: Text('Error: $err')),
         data: (ordenes) {
           if (ordenes.isEmpty) {
-            return const Center(
-              child: Text('No hay órdenes abiertas en este momento.'),
-            );
+            return const Center(child: Text('No hay ordenes abiertas.'));
           }
-
+          final tecnicos = tecnicosAsync.valueOrNull ?? const [];
+          final porId = {for (final t in tecnicos) t.id: t.nombre};
           return ListView.builder(
             itemCount: ordenes.length,
-            itemBuilder: (context, index) {
-              final orden = ordenes[index];
+            itemBuilder: (context, i) {
+              final orden = ordenes[i];
+              final tecnico = orden.tecnicoId == null
+                  ? 'Sin asignar'
+                  : (porId[orden.tecnicoId] ?? 'Sin asignar');
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 child: ListTile(
                   title: Text('Falla: ${orden.fallaReportada}'),
-                  subtitle: Text(
-                    'Estado: ${orden.estado} \nTécnico: ${orden.tecnicoAsignado ?? "Sin asignar"}',
+                  subtitle: Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Row(
+                      children: [
+                        EstadoPildora(estado: orden.estado),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text('Tecnico: $tecnico')),
+                      ],
+                    ),
                   ),
-                  isThreeLine: true,
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
-                    // Navegamos a la pantalla de detalle de la orden
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => DetalleOrdenScreen(orden: orden),
+                        builder: (_) => DetalleOrdenScreen(orden: orden),
                       ),
                     );
                   },
@@ -60,12 +61,11 @@ class OrdenesScreen extends ConsumerWidget {
           );
         },
       ),
-      // Botón para ir a registrar una nueva orden
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const NuevaOrdenScreen()),
+            MaterialPageRoute(builder: (_) => const NuevaOrdenScreen()),
           );
         },
         child: const Icon(Icons.add),

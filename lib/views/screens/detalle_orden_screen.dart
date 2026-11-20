@@ -16,7 +16,7 @@ class DetalleOrdenScreen extends ConsumerStatefulWidget {
 
 class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
   late String _estadoActual;
-  final _tecnicoCtrl = TextEditingController();
+  int? _tecnicoId;
   final _trabajoDescCtrl = TextEditingController();
   final _trabajoCostoCtrl = TextEditingController();
 
@@ -24,50 +24,43 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
   void initState() {
     super.initState();
     _estadoActual = widget.orden.estado;
-    _tecnicoCtrl.text = widget.orden.tecnicoAsignado ?? '';
+    _tecnicoId = widget.orden.tecnicoId;
   }
 
   @override
   void dispose() {
-    _tecnicoCtrl.dispose();
     _trabajoDescCtrl.dispose();
     _trabajoCostoCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _guardarCambios(DetalleOrdenViewModel vm) async {
+  Future<void> _guardar(DetalleOrdenViewModel vm) async {
     try {
-      await vm.guardarCambios(_estadoActual, _tecnicoCtrl.text.trim());
+      await vm.guardarCambios(_estadoActual, _tecnicoId);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Orden actualizada correctamente')),
+        const SnackBar(content: Text('Orden actualizada')),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al actualizar: $e')),
+        SnackBar(content: Text('Error: $e')),
       );
     }
   }
 
   Future<void> _agregarTrabajo(DetalleOrdenViewModel vm) async {
-    final descripcion = _trabajoDescCtrl.text.trim();
+    final desc = _trabajoDescCtrl.text.trim();
     final costo =
         double.tryParse(_trabajoCostoCtrl.text.trim().replaceAll(',', '.'));
-    if (descripcion.isEmpty) {
+    if (desc.isEmpty || costo == null || costo <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ingresa una descripcion del trabajo.')),
-      );
-      return;
-    }
-    if (costo == null || costo <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ingresa un costo mayor a 0.')),
+        const SnackBar(content: Text('Descripcion y costo validos requeridos.')),
       );
       return;
     }
     try {
-      await vm.agregarTrabajo(descripcion, costo);
+      await vm.agregarTrabajo(desc, costo);
       _trabajoDescCtrl.clear();
       _trabajoCostoCtrl.clear();
       if (!mounted) return;
@@ -82,19 +75,17 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
     }
   }
 
-  Future<void> _mostrarSelectorRepuestos(
-    DetalleOrdenViewModel vm,
-  ) async {
+  Future<void> _agregarRepuesto(DetalleOrdenViewModel vm) async {
     final dao = ref.read(talleresDaoProvider);
     final repuestos = await dao.obtenerTodosRepuestos();
     if (!mounted) return;
     if (repuestos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No hay repuestos en el almacen.')),
+        const SnackBar(content: Text('Sin repuestos en almacen.')),
       );
       return;
     }
-    final seleccionado = await showDialog<RepuestosData>(
+    final sel = await showDialog<RepuestosData>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Seleccionar repuesto'),
@@ -107,7 +98,8 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
               final r = repuestos[i];
               return ListTile(
                 title: Text(r.nombre),
-                subtitle: Text('Stock: ${r.existencias} | \$${r.precio.toStringAsFixed(2)}'),
+                subtitle: Text(
+                    'Stock: ${r.existencias} | \$${r.precio.toStringAsFixed(2)}'),
                 enabled: r.existencias > 0,
                 onTap: r.existencias > 0 ? () => Navigator.pop(ctx, r) : null,
               );
@@ -122,20 +114,18 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
         ],
       ),
     );
-    if (seleccionado == null || !mounted) return;
-
-    final cantidad = await showDialog<int>(
+    if (sel == null || !mounted) return;
+    final cant = await showDialog<int>(
       context: context,
       builder: (ctx) {
         final ctrl = TextEditingController(text: '1');
         return AlertDialog(
-          title: Text(seleccionado.nombre),
+          title: Text(sel.nombre),
           content: TextField(
             controller: ctrl,
             keyboardType: TextInputType.number,
             decoration: InputDecoration(
-              labelText: 'Cantidad (max ${seleccionado.existencias})',
-            ),
+                labelText: 'Cantidad (max ${sel.existencias})'),
           ),
           actions: [
             TextButton(
@@ -145,7 +135,7 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
             ElevatedButton(
               onPressed: () {
                 final n = int.tryParse(ctrl.text.trim());
-                if (n == null || n <= 0 || n > seleccionado.existencias) return;
+                if (n == null || n <= 0 || n > sel.existencias) return;
                 Navigator.pop(ctx, n);
               },
               child: const Text('Agregar'),
@@ -154,12 +144,12 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
         );
       },
     );
-    if (cantidad == null || !mounted) return;
+    if (cant == null || !mounted) return;
     try {
-      await vm.agregarRepuesto(seleccionado.id, cantidad);
+      await vm.agregarRepuesto(sel.id, cant);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Se agregaron $cantidad x ${seleccionado.nombre}')),
+        SnackBar(content: Text('Se agregaron $cant x ${sel.nombre}')),
       );
     } catch (e) {
       if (!mounted) return;
@@ -172,16 +162,15 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(detalleOrdenProvider(widget.orden));
+    final tecnicosAsync = ref.watch(tecnicosProvider);
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Orden #${widget.orden.id}'),
-        actions: const [],
-      ),
+      appBar: AppBar(title: Text('Orden #${widget.orden.id}')),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (state) {
           final vm = ref.read(detalleOrdenProvider(widget.orden).notifier);
+          final tecnicos = tecnicosAsync.valueOrNull ?? const [];
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
@@ -191,9 +180,7 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
                     child: Text(
                       'Falla: ${widget.orden.fallaReportada}',
                       style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                          fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ),
                   EstadoPildora(estado: _estadoActual),
@@ -203,23 +190,36 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
               Text(
                 'Costo total: \$${state.costoTotal.toStringAsFixed(2)}',
                 style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green,
-                ),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green),
               ),
               const Divider(height: 24),
-              TextField(
-                controller: _tecnicoCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Tecnico responsable',
-                ),
+              DropdownButtonFormField<int?>(
+                value: _tecnicoId,
+                decoration:
+                    const InputDecoration(labelText: 'Tecnico responsable'),
+                items: [
+                  const DropdownMenuItem<int?>(
+                      value: null, child: Text('Sin asignar')),
+                  ...tecnicos.map(
+                    (t) => DropdownMenuItem<int?>(
+                        value: t.id, child: Text(t.nombre)),
+                  ),
+                ],
+                onChanged: (v) => setState(() => _tecnicoId = v),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 value: _estadoActual,
                 decoration: const InputDecoration(labelText: 'Estado'),
-                items: const ['recibida', 'en_reparacion', 'lista', 'entregada', 'cancelada']
+                items: const [
+                  'recibida',
+                  'en_reparacion',
+                  'lista',
+                  'entregada',
+                  'cancelada'
+                ]
                     .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                     .toList(),
                 onChanged: (v) {
@@ -228,14 +228,13 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
               ),
               const SizedBox(height: 12),
               ElevatedButton(
-                onPressed: state.guardando ? null : () => _guardarCambios(vm),
-                child: Text(state.guardando ? 'Guardando...' : 'Guardar cambios'),
+                onPressed: state.guardando ? null : () => _guardar(vm),
+                child: Text(state.guardando ? 'Guardando...' : 'Guardar'),
               ),
               const Divider(height: 32),
-              const Text(
-                'Registrar mano de obra',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
+              const Text('Registrar mano de obra',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 16)),
               TextField(
                 controller: _trabajoDescCtrl,
                 decoration: const InputDecoration(labelText: 'Descripcion'),
@@ -248,8 +247,7 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
               ),
               const SizedBox(height: 12),
               ElevatedButton(
-                onPressed:
-                    state.guardando ? null : () => _agregarTrabajo(vm),
+                onPressed: state.guardando ? null : () => _agregarTrabajo(vm),
                 child: const Text('Agregar trabajo'),
               ),
               const SizedBox(height: 16),
@@ -258,20 +256,18 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
                   backgroundColor: Colors.orange,
                   foregroundColor: Colors.white,
                 ),
-                onPressed: state.guardando
-                    ? null
-                    : () => _mostrarSelectorRepuestos(vm),
+                onPressed:
+                    state.guardando ? null : () => _agregarRepuesto(vm),
                 icon: const Icon(Icons.build_circle),
                 label: const Text('Anadir repuesto'),
               ),
               const Divider(height: 32),
-              const Text(
-                'Trabajos registrados',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
+              const Text('Trabajos',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 6),
               if (state.trabajos.isEmpty)
-                const Text('Aun no hay trabajos.')
+                const Text('Sin trabajos.')
               else
                 ...state.trabajos.map(
                   (t) => Card(
@@ -285,25 +281,22 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
                   ),
                 ),
               const SizedBox(height: 16),
-              const Text(
-                'Repuestos utilizados',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
+              const Text('Repuestos usados',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 6),
               if (state.repuestos.isEmpty)
-                const Text('Aun no se han usado repuestos.')
+                const Text('Sin repuestos.')
               else
                 ...state.repuestos.map(
-                  (item) => Card(
+                  (i) => Card(
                     child: ListTile(
                       title: Text(
-                        '${item.repuesto.nombre} (${item.repuesto.codigo})',
-                      ),
+                          '${i.repuesto.nombre} (${i.repuesto.codigo})'),
                       subtitle: Text(
-                        '${item.detalle.cantidad} x \$${item.detalle.precioUnitario.toStringAsFixed(2)}',
-                      ),
+                          '${i.detalle.cantidad} x \$${i.detalle.precioUnitario.toStringAsFixed(2)}'),
                       trailing: Text(
-                        '\$${(item.detalle.cantidad * item.detalle.precioUnitario).toStringAsFixed(2)}',
+                        '\$${(i.detalle.cantidad * i.detalle.precioUnitario).toStringAsFixed(2)}',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),

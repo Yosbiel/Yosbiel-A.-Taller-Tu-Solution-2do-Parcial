@@ -4,16 +4,18 @@ import '../database/app_tables.dart';
 
 part 'talleres_dao.g.dart';
 
-// Item de historial: una orden con su equipo y su cliente.
+// Item de historial: una orden con su equipo, su cliente y el nombre del tecnico.
 class HistorialOrdenItem {
   final OrdenesReparacionData orden;
   final Equipo equipo;
   final Cliente cliente;
+  final String? tecnicoNombre;
 
   HistorialOrdenItem({
     required this.orden,
     required this.equipo,
     required this.cliente,
+    required this.tecnicoNombre,
   });
 }
 
@@ -33,13 +35,13 @@ class RepuestoUsadoItem {
   Repuestos,
   Clientes,
   Equipos,
+  Tecnicos,
   DetallesOrdenTrabajos,
   DetallesOrdenRepuestos
 ])
 class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin {
   TalleresDao(AppDatabase db) : super(db);
 
-  // Estados validos del flujo de una orden.
   static const List<String> estadosValidos = [
     'recibida',
     'en_reparacion',
@@ -48,8 +50,6 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
     'cancelada',
   ];
 
-  // Transiciones permitidas desde cada estado.
-  // Entregada y cancelada son estados finales: no permiten salida.
   static const Map<String, List<String>> _transicionesPermitidas = {
     'recibida': ['en_reparacion', 'cancelada'],
     'en_reparacion': ['lista', 'cancelada'],
@@ -58,10 +58,8 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
     'cancelada': <String>[],
   };
 
-  // Telefono: opcional '+', entre 7 y 15 digitos. Sin espacios ni guiones.
   static final RegExp _telefonoRegex = RegExp(r'^\+?\d{7,15}$');
 
-  // Valida y normaliza el telefono. Lanza ArgumentError si no cumple.
   static String _validarTelefono(String telefono) {
     final limpio = telefono.trim();
     if (limpio.isEmpty) {
@@ -76,7 +74,6 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
     return limpio;
   }
 
-  // Valida que un campo de texto no este vacio. Devuelve el valor con trim.
   static String _validarNoVacio(String valor, String campo) {
     final limpio = valor.trim();
     if (limpio.isEmpty) {
@@ -85,7 +82,8 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
     return limpio;
   }
 
-  // Lista de ordenes abiertas (no entregadas ni canceladas), mas recientes primero.
+  // ─── LECTURA DE ORDENES ───
+
   Future<List<OrdenesReparacionData>> obtenerOrdenesAbiertas() {
     return (select(db.ordenesReparacion)
           ..where((t) => t.estado.isNotIn(['entregada', 'cancelada']))
@@ -93,8 +91,6 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
         .get();
   }
 
-  // Version reactiva de obtenerOrdenesAbiertas. Emite cada vez que cambia la tabla.
-  // Se usara en StreamProvider (Parte 2).
   Stream<List<OrdenesReparacionData>> watchOrdenesAbiertas() {
     return (select(db.ordenesReparacion)
           ..where((t) => t.estado.isNotIn(['entregada', 'cancelada']))
@@ -102,15 +98,20 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
         .watch();
   }
 
-  // Registra una orden completa: cliente, equipo y orden.
-  // Reglas:
-  // - Cliente se busca por telefono. Si existe, se actualiza el nombre.
-  // - Equipo se busca por numero de serie (si viene).
-  //   Si la serie existe y el dueno coincide, se actualizan datos del equipo
-  //   sin tocar clienteId.
-  //   Si la serie existe y el dueno NO coincide, se lanza StateError.
-  //   Para reasignar de forma consciente se usa reasignarEquipoACliente.
-  // - La orden se crea en estado 'recibida'.
+  // ─── TECNICOS ───
+
+  Future<List<TecnicosData>> obtenerTecnicos() {
+    return (select(db.tecnicos)..orderBy([(t) => OrderingTerm.asc(t.nombre)]))
+        .get();
+  }
+
+  Stream<List<TecnicosData>> watchTecnicos() {
+    return (select(db.tecnicos)..orderBy([(t) => OrderingTerm.asc(t.nombre)]))
+        .watch();
+  }
+
+  // ─── REGISTRO DE ORDEN ───
+
   Future<void> registrarNuevaOrdenCompleta({
     required String nombreCliente,
     required String telefonoCliente,
@@ -125,11 +126,10 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
     final tipoLimpio = _validarNoVacio(tipoEquipo, 'tipo de equipo');
     final marcaLimpia = _validarNoVacio(marca, 'marca');
     final modeloLimpio = _validarNoVacio(modelo, 'modelo');
-    final serieLimpia = numeroSerie.trim(); // la serie puede venir vacia
+    final serieLimpia = numeroSerie.trim();
     final fallaLimpia = _validarNoVacio(fallaReportada, 'falla reportada');
 
     await transaction(() async {
-      // 1) Cliente por telefono.
       final clienteExistente = await (select(db.clientes)
             ..where((c) => c.telefono.equals(telefonoLimpio)))
           .getSingleOrNull();
@@ -137,7 +137,6 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
       final int clienteId;
       if (clienteExistente != null) {
         clienteId = clienteExistente.id;
-        // Solo actualizamos nombre si cambio.
         if (clienteExistente.nombre != nombreLimpio) {
           await (update(db.clientes)..where((c) => c.id.equals(clienteId))).write(
             ClientesCompanion(nombre: Value(nombreLimpio)),
@@ -152,7 +151,6 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
         );
       }
 
-      // 2) Equipo por serie (si viene).
       int equipoId;
       Equipo? equipoExistente;
       if (serieLimpia.isNotEmpty) {
@@ -162,8 +160,6 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
       }
 
       if (equipoExistente != null) {
-        // Bloqueo de reasignacion silenciosa: si la serie existe pero el
-        // dueno no coincide, no se permite seguir.
         if (equipoExistente.clienteId != clienteId) {
           final duenoActual = await (select(db.clientes)
                 ..where((c) => c.id.equals(equipoExistente!.clienteId)))
@@ -175,7 +171,6 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
             'Si cambio de dueno, usa la opcion "Reasignar equipo".',
           );
         }
-        // Mismo dueno: actualizamos datos del equipo, sin tocar clienteId.
         equipoId = equipoExistente.id;
         await (update(db.equipos)..where((e) => e.id.equals(equipoId))).write(
           EquiposCompanion(
@@ -196,7 +191,6 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
         );
       }
 
-      // 3) Orden.
       await into(db.ordenesReparacion).insert(
         OrdenesReparacionCompanion.insert(
           equipoId: equipoId,
@@ -208,8 +202,6 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
     });
   }
 
-  // Reasigna explicitamente un equipo a otro cliente.
-  // Uso previsto: boton "Reasignar" en la UI (Parte 3).
   Future<void> reasignarEquipoACliente(int equipoId, int nuevoClienteId) async {
     final existeCliente = await (select(db.clientes)
           ..where((c) => c.id.equals(nuevoClienteId)))
@@ -225,7 +217,6 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
     }
   }
 
-  // Devuelve el equipo con esa serie, o null si no existe.
   Future<Equipo?> obtenerEquipoPorSerie(String numeroSerie) {
     final limpio = numeroSerie.trim();
     if (limpio.isEmpty) return Future.value(null);
@@ -233,15 +224,38 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
         .getSingleOrNull();
   }
 
-  // Actualiza estado y tecnico de una orden.
-  // - Valida que nuevoEstado sea valido.
-  // - Valida la transicion desde el estado actual.
-  // - Si tecnico llega vacio, PRESERVA el tecnico actual.
-  //   Para borrarlo explicitamente se usa desasignarTecnico.
+  // ─── ESTADO Y TECNICO ───
+
+  // Toma una orden para un tecnico. Bloquea si ya esta tomada por otro.
+  Future<void> tomarOrden(int ordenId, int tecnicoId) async {
+    await transaction(() async {
+      final actual = await (select(db.ordenesReparacion)
+            ..where((o) => o.id.equals(ordenId)))
+          .getSingleOrNull();
+      if (actual == null) {
+        throw StateError('No existe la orden con id $ordenId.');
+      }
+      if (actual.tecnicoId != null && actual.tecnicoId != tecnicoId) {
+        final otro = await (select(db.tecnicos)
+              ..where((t) => t.id.equals(actual.tecnicoId!)))
+            .getSingle();
+        throw StateError(
+          'La orden ya esta tomada por ${otro.nombre}. '
+          'Pidele que la libere antes de tomarla tu.',
+        );
+      }
+      await (update(db.ordenesReparacion)..where((o) => o.id.equals(ordenId))).write(
+        OrdenesReparacionCompanion(tecnicoId: Value(tecnicoId)),
+      );
+    });
+  }
+
+  // Actualiza estado y tecnico. Si tecnicoId llega null, PRESERVA el actual.
+  // Para liberar la orden se usa desasignarTecnico.
   Future<bool> actualizarEstadoYTecnico(
     int idOrden,
     String nuevoEstado, {
-    String? tecnico,
+    int? tecnicoId,
   }) async {
     if (!estadosValidos.contains(nuevoEstado)) {
       throw ArgumentError('Estado no valido: $nuevoEstado');
@@ -255,7 +269,6 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
         throw StateError('No existe la orden con id $idOrden.');
       }
 
-      // Validar transicion.
       final permitidos = _transicionesPermitidas[actual.estado] ?? const [];
       if (actual.estado != nuevoEstado && !permitidos.contains(nuevoEstado)) {
         throw StateError(
@@ -266,31 +279,28 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
       }
 
       // Preservar tecnico si no llega uno nuevo.
-      final tecnicoLimpio = (tecnico ?? '').trim();
-      final tecnicoFinal = tecnicoLimpio.isNotEmpty
-          ? tecnicoLimpio
-          : actual.tecnicoAsignado;
+      final tecnicoFinal = tecnicoId ?? actual.tecnicoId;
 
       final filas = await (update(db.ordenesReparacion)
             ..where((o) => o.id.equals(idOrden)))
           .write(
         OrdenesReparacionCompanion(
           estado: Value(nuevoEstado),
-          tecnicoAsignado: Value(tecnicoFinal),
+          tecnicoId: Value(tecnicoFinal),
         ),
       );
       return filas > 0;
     });
   }
 
-  // Borra explicitamente el tecnico asignado a una orden.
   Future<void> desasignarTecnico(int idOrden) async {
     await (update(db.ordenesReparacion)..where((o) => o.id.equals(idOrden))).write(
-      const OrdenesReparacionCompanion(tecnicoAsignado: Value(null)),
+      const OrdenesReparacionCompanion(tecnicoId: Value(null)),
     );
   }
 
-  // Registra un trabajo de mano de obra en una orden.
+  // ─── TRABAJOS Y REPUESTOS ───
+
   Future<int> insertarTrabajo(int ordenId, String descripcion, double costo) {
     final descLimpia = _validarNoVacio(descripcion, 'descripcion del trabajo');
     if (costo <= 0 || costo.isNaN || costo.isInfinite) {
@@ -311,21 +321,18 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
         .get();
   }
 
-  // Lista todos los repuestos del almacen, ordenados por nombre.
   Future<List<RepuestosData>> obtenerTodosRepuestos() {
     return (select(db.repuestos)
           ..orderBy([(r) => OrderingTerm.asc(r.nombre)]))
         .get();
   }
 
-  // Version reactiva de obtenerTodosRepuestos.
   Stream<List<RepuestosData>> watchTodosRepuestos() {
     return (select(db.repuestos)
           ..orderBy([(r) => OrderingTerm.asc(r.nombre)]))
         .watch();
   }
 
-  // Repuestos con stock bajo (existencias <= 3).
   Future<List<RepuestosData>> obtenerRepuestosStockBajo() {
     return (select(db.repuestos)
           ..where((t) => t.existencias.isSmallerOrEqual(const Constant(3)))
@@ -333,7 +340,6 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
         .get();
   }
 
-  // Version reactiva de obtenerRepuestosStockBajo.
   Stream<List<RepuestosData>> watchRepuestosStockBajo() {
     return (select(db.repuestos)
           ..where((t) => t.existencias.isSmallerOrEqual(const Constant(3)))
@@ -341,7 +347,6 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
         .watch();
   }
 
-  // Inserta un repuesto nuevo. Valida codigo unico.
   Future<int> insertarRepuesto(
     String codigo,
     String nombre,
@@ -356,15 +361,12 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
     if (existencias < 0) {
       throw ArgumentError('Las existencias iniciales no pueden ser negativas.');
     }
-
-    // Chequeo puntual de duplicado, sin cargar toda la tabla.
     final existente = await (select(db.repuestos)
           ..where((r) => r.codigo.equals(codigoLimpio)))
         .getSingleOrNull();
     if (existente != null) {
       throw StateError('Ya existe un repuesto con el codigo "$codigoLimpio".');
     }
-
     return into(db.repuestos).insert(
       RepuestosCompanion.insert(
         codigo: codigoLimpio,
@@ -375,7 +377,6 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
     );
   }
 
-  // Actualiza un repuesto existente. No permite cambiar el codigo a uno ya usado.
   Future<void> actualizarRepuesto({
     required int id,
     required String codigo,
@@ -391,10 +392,7 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
     if (existencias < 0) {
       throw ArgumentError('Las existencias no pueden ser negativas.');
     }
-
-    // Si el codigo cambio, verificar que el nuevo no exista ya.
-    final actual = await (select(db.repuestos)
-          ..where((r) => r.id.equals(id)))
+    final actual = await (select(db.repuestos)..where((r) => r.id.equals(id)))
         .getSingleOrNull();
     if (actual == null) {
       throw StateError('No existe el repuesto con id $id.');
@@ -407,7 +405,6 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
         throw StateError('Ya existe otro repuesto con el codigo "$codigoLimpio".');
       }
     }
-
     await (update(db.repuestos)..where((r) => r.id.equals(id))).write(
       RepuestosCompanion(
         codigo: Value(codigoLimpio),
@@ -418,9 +415,7 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
     );
   }
 
-  // Elimina un repuesto si no esta usado en ninguna orden.
   Future<void> eliminarRepuesto(int id) async {
-    // Contar usos en detalles de orden.
     final usos = await (select(db.detallesOrdenRepuestos)
           ..where((d) => d.repuestoId.equals(id)))
         .get();
@@ -436,8 +431,6 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
     }
   }
 
-  // Agrega un repuesto a una orden y descuenta stock en una sola transaccion.
-  // Relee el repuesto dentro de la transaccion para evitar condiciones de carrera.
   Future<void> agregarRepuestoAOrden({
     required int ordenId,
     required int repuestoId,
@@ -446,9 +439,7 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
     if (cantidadUsada <= 0) {
       throw ArgumentError('La cantidad usada debe ser mayor a 0.');
     }
-
     await transaction(() async {
-      // Releer el repuesto dentro de la transaccion.
       final repuesto = await (select(db.repuestos)
             ..where((r) => r.id.equals(repuestoId)))
           .getSingleOrNull();
@@ -461,7 +452,6 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
           'disponible ${repuesto.existencias}, solicitado $cantidadUsada.',
         );
       }
-
       await into(db.detallesOrdenRepuestos).insert(
         DetallesOrdenRepuestosCompanion.insert(
           ordenId: ordenId,
@@ -470,20 +460,17 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
           precioUnitario: repuesto.precio,
         ),
       );
-
       await (update(db.repuestos)..where((r) => r.id.equals(repuestoId))).write(
-        RepuestosCompanion(
-          existencias: Value(repuesto.existencias - cantidadUsada),
-        ),
+        RepuestosCompanion(existencias: Value(repuesto.existencias - cantidadUsada)),
       );
     });
   }
 
   Future<List<RepuestoUsadoItem>> obtenerRepuestosDeOrden(int ordenId) async {
     final query = select(db.detallesOrdenRepuestos).join([
-      innerJoin(db.repuestos, db.repuestos.id.equalsExp(db.detallesOrdenRepuestos.repuestoId)),
+      innerJoin(db.repuestos,
+          db.repuestos.id.equalsExp(db.detallesOrdenRepuestos.repuestoId)),
     ])..where(db.detallesOrdenRepuestos.ordenId.equals(ordenId));
-
     final rows = await query.get();
     return rows
         .map((row) => RepuestoUsadoItem(
@@ -493,32 +480,25 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
         .toList();
   }
 
-  // Calcula el costo total de una orden con sum() en SQL.
   Future<double> calcularCostoTotalOrden(int ordenId) async {
-    final manoObraExpr = db.detallesOrdenTrabajos.costoManoDeObra.sum();
-    final manoObraQuery = selectOnly(db.detallesOrdenTrabajos)
-      ..addColumns([manoObraExpr])
-      ..where(db.detallesOrdenTrabajos.ordenId.equals(ordenId));
-    final manoObraRow = await manoObraQuery.getSingle();
-    final totalManoObra = manoObraRow.read(manoObraExpr) ?? 0.0;
-
-    final cantExpr = db.detallesOrdenRepuestos.cantidad.cast<int>();
-    // Multiplicacion cantidad * precioUnitario por linea.
-    final lineaExpr = db.detallesOrdenRepuestos.cantidad *
-        db.detallesOrdenRepuestos.precioUnitario;
-    final totalLineaExpr = lineaExpr.sum();
-    final repuestosQuery = selectOnly(db.detallesOrdenRepuestos)
-      ..addColumns([totalLineaExpr])
-      ..where(db.detallesOrdenRepuestos.ordenId.equals(ordenId));
-    final repuestosRow = await repuestosQuery.getSingle();
-    final totalRepuestos = repuestosRow.read(totalLineaExpr) ?? 0.0;
-
-    // Silenciar variable no usada; se deja por claridad.
-    // ignore: unused_local_variable
-    final _ = cantExpr;
-
+    final trabajos = await (select(db.detallesOrdenTrabajos)
+          ..where((t) => t.ordenId.equals(ordenId)))
+        .get();
+    double totalManoObra = 0.0;
+    for (final t in trabajos) {
+      totalManoObra += t.costoManoDeObra;
+    }
+    final repuestosUsados = await (select(db.detallesOrdenRepuestos)
+          ..where((t) => t.ordenId.equals(ordenId)))
+        .get();
+    double totalRepuestos = 0.0;
+    for (final r in repuestosUsados) {
+      totalRepuestos += r.cantidad * r.precioUnitario;
+    }
     return totalManoObra + totalRepuestos;
   }
+
+  // ─── HISTORIAL ───
 
   Future<List<OrdenesReparacionData>> obtenerHistorialPorEquipo(int equipoId) {
     return (select(db.ordenesReparacion)
@@ -527,11 +507,17 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
         .get();
   }
 
-  // Busca historial por equipo (serie, marca, modelo o tipo). Filtra en SQL.
+  // Nombre del tecnico a partir del id. Devuelve null si no hay tecnico.
+  Future<String?> _nombreTecnico(int? tecnicoId) async {
+    if (tecnicoId == null) return null;
+    final t = await (select(db.tecnicos)..where((t) => t.id.equals(tecnicoId)))
+        .getSingleOrNull();
+    return t?.nombre;
+  }
+
   Future<List<HistorialOrdenItem>> buscarHistorialPorEquipo(String filtro) async {
     final limpio = filtro.trim().toLowerCase();
     if (limpio.isEmpty) return [];
-
     final patron = '%$limpio%';
     final query = select(db.ordenesReparacion).join([
       innerJoin(db.equipos, db.equipos.id.equalsExp(db.ordenesReparacion.equipoId)),
@@ -544,22 +530,23 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
             db.equipos.tipo.lower().like(patron),
       )
       ..orderBy([OrderingTerm.desc(db.ordenesReparacion.fechaCreacion)]);
-
     final rows = await query.get();
-    return rows
-        .map((row) => HistorialOrdenItem(
-              orden: row.readTable(db.ordenesReparacion),
-              equipo: row.readTable(db.equipos),
-              cliente: row.readTable(db.clientes),
-            ))
-        .toList();
+    final result = <HistorialOrdenItem>[];
+    for (final row in rows) {
+      final orden = row.readTable(db.ordenesReparacion);
+      result.add(HistorialOrdenItem(
+        orden: orden,
+        equipo: row.readTable(db.equipos),
+        cliente: row.readTable(db.clientes),
+        tecnicoNombre: await _nombreTecnico(orden.tecnicoId),
+      ));
+    }
+    return result;
   }
 
-  // Busca historial por cliente (nombre o telefono). Filtra en SQL.
   Future<List<HistorialOrdenItem>> buscarHistorialPorCliente(String filtro) async {
     final limpio = filtro.trim().toLowerCase();
     if (limpio.isEmpty) return [];
-
     final patron = '%$limpio%';
     final query = select(db.ordenesReparacion).join([
       innerJoin(db.equipos, db.equipos.id.equalsExp(db.ordenesReparacion.equipoId)),
@@ -570,61 +557,39 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
             db.clientes.telefono.lower().like(patron),
       )
       ..orderBy([OrderingTerm.desc(db.ordenesReparacion.fechaCreacion)]);
-
     final rows = await query.get();
-    return rows
-        .map((row) => HistorialOrdenItem(
-              orden: row.readTable(db.ordenesReparacion),
-              equipo: row.readTable(db.equipos),
-              cliente: row.readTable(db.clientes),
-            ))
-        .toList();
+    final result = <HistorialOrdenItem>[];
+    for (final row in rows) {
+      final orden = row.readTable(db.ordenesReparacion);
+      result.add(HistorialOrdenItem(
+        orden: orden,
+        equipo: row.readTable(db.equipos),
+        cliente: row.readTable(db.clientes),
+        tecnicoNombre: await _nombreTecnico(orden.tecnicoId),
+      ));
+    }
+    return result;
   }
 
-  // Carga de trabajo por tecnico: agrupa en SQL y cuenta ordenes abiertas.
+  // ─── CARGA POR TECNICO ───
+
   Future<Map<String, int>> obtenerCargaTrabajoPorTecnico() async {
-    final tecnicoCol = db.ordenesReparacion.tecnicoAsignado;
-    final countExpr = db.ordenesReparacion.id.count();
-
-    final query = selectOnly(db.ordenesReparacion)
-      ..addColumns([tecnicoCol, countExpr])
-      ..where(db.ordenesReparacion.estado.isNotIn(['entregada', 'cancelada']))
-      ..groupBy([tecnicoCol]);
-
-    final rows = await query.get();
+    final ordenes = await (select(db.ordenesReparacion)
+          ..where((t) => t.estado.isNotIn(['entregada', 'cancelada'])))
+        .get();
+    final tecnicos = await obtenerTecnicos();
+    final porId = {for (final t in tecnicos) t.id: t.nombre};
     final carga = <String, int>{};
-    for (final row in rows) {
-      final tecnicoRaw = row.read(tecnicoCol);
-      final tecnico = (tecnicoRaw == null || tecnicoRaw.trim().isEmpty)
+    for (final o in ordenes) {
+      final nombre = o.tecnicoId == null
           ? 'Sin asignar'
-          : tecnicoRaw.trim();
-      final cantidad = row.read(countExpr) ?? 0;
-      carga[tecnico] = (carga[tecnico] ?? 0) + cantidad;
+          : (porId[o.tecnicoId] ?? 'Sin asignar');
+      carga[nombre] = (carga[nombre] ?? 0) + 1;
     }
     return carga;
   }
 
-  // Version reactiva de obtenerCargaTrabajoPorTecnico.
   Stream<Map<String, int>> watchCargaTrabajoPorTecnico() {
-    final tecnicoCol = db.ordenesReparacion.tecnicoAsignado;
-    final countExpr = db.ordenesReparacion.id.count();
-
-    final query = selectOnly(db.ordenesReparacion)
-      ..addColumns([tecnicoCol, countExpr])
-      ..where(db.ordenesReparacion.estado.isNotIn(['entregada', 'cancelada']))
-      ..groupBy([tecnicoCol]);
-
-    return query.watch().map((rows) {
-      final carga = <String, int>{};
-      for (final row in rows) {
-        final tecnicoRaw = row.read(tecnicoCol);
-        final tecnico = (tecnicoRaw == null || tecnicoRaw.trim().isEmpty)
-            ? 'Sin asignar'
-            : tecnicoRaw.trim();
-        final cantidad = row.read(countExpr) ?? 0;
-        carga[tecnico] = (carga[tecnico] ?? 0) + cantidad;
-      }
-      return carga;
-    });
+    return watchOrdenesAbiertas().asyncMap((_) => obtenerCargaTrabajoPorTecnico());
   }
 }
