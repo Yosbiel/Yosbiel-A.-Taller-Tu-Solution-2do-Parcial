@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../data/database/app_database.dart';
 import '../data/daos/talleres_dao.dart';
 
@@ -38,7 +39,6 @@ final cargaTrabajoProvider =
   return dao.watchCargaTrabajoPorTecnico();
 });
 
-// Lista reactiva de los 3 tecnicos. La usan los dropdowns.
 final tecnicosProvider =
     StreamProvider.autoDispose<List<TecnicosData>>((ref) {
   final dao = ref.watch(talleresDaoProvider);
@@ -57,4 +57,40 @@ final historialClienteProvider = FutureProvider.autoDispose
   return await dao.buscarHistorialPorCliente(filtro);
 });
 
-final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.system);
+// Tema persistente en SharedPreferences.
+const _kThemeKey = 'theme_mode';
+
+class ThemeModeNotifier extends StateNotifier<ThemeMode> {
+  ThemeModeNotifier() : super(ThemeMode.system) {
+    _cargar();
+  }
+
+  Future<void> _cargar() async {
+    final prefs = await SharedPreferences.getInstance();
+    final guardado = prefs.getString(_kThemeKey);
+    if (guardado == 'dark') {
+      state = ThemeMode.dark;
+    } else if (guardado == 'light') {
+      state = ThemeMode.light;
+    } else {
+      state = ThemeMode.system;
+    }
+  }
+
+  Future<void> setMode(ThemeMode mode) async {
+    state = mode;
+    final prefs = await SharedPreferences.getInstance();
+    if (mode == ThemeMode.dark) {
+      await prefs.setString(_kThemeKey, 'dark');
+    } else if (mode == ThemeMode.light) {
+      await prefs.setString(_kThemeKey, 'light');
+    } else {
+      await prefs.remove(_kThemeKey);
+    }
+  }
+}
+
+final themeModeProvider =
+    StateNotifierProvider<ThemeModeNotifier, ThemeMode>((ref) {
+  return ThemeModeNotifier();
+});

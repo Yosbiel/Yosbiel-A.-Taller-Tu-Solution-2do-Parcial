@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../viewmodels/talleres_providers.dart';
 
-// Boton sol/luna para alternar el tema.
 class BotonTema extends ConsumerWidget {
   const BotonTema({Key? key}) : super(key: key);
 
@@ -16,19 +15,20 @@ class BotonTema extends ConsumerWidget {
       tooltip: esOscuro ? 'Modo claro' : 'Modo oscuro',
       icon: Icon(esOscuro ? Icons.light_mode : Icons.dark_mode),
       onPressed: () {
-        ref.read(themeModeProvider.notifier).state =
-            esOscuro ? ThemeMode.light : ThemeMode.dark;
+        ref.read(themeModeProvider.notifier).setMode(
+              esOscuro ? ThemeMode.light : ThemeMode.dark,
+            );
       },
     );
   }
 }
 
-// Boton de informacion con dialog de creditos.
 class BotonInfo extends StatelessWidget {
   const BotonInfo({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return IconButton(
       tooltip: 'Acerca de',
       icon: const Icon(Icons.info_outline),
@@ -36,17 +36,43 @@ class BotonInfo extends StatelessWidget {
         showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('Tu Solution'),
-            content: const Column(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: scheme.primary,
+                  child: Icon(Icons.build, color: scheme.onPrimary),
+                ),
+                const SizedBox(width: 12),
+                const Text('Tu Solution'),
+              ],
+            ),
+            content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Sistema de gestion para taller de reparaciones.'),
-                SizedBox(height: 8),
-                Text('Programacion para Dispositivos Moviles'),
-                Text('Ingenieria Informatica - 3er ano'),
-                SizedBox(height: 8),
-                Text('Flutter + Drift + Riverpod'),
+                const Text(
+                  'Sistema de gestion para taller de reparaciones.',
+                  style: TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 16),
+                _fila(Icons.school, 'Ingenieria Informatica - 3er año'),
+                const SizedBox(height: 6),
+                _fila(Icons.phone_android, 'Programacion para Dispositivos Moviles'),
+                const SizedBox(height: 6),
+                _fila(Icons.code, 'Flutter + Drift + Riverpod'),
+                const SizedBox(height: 12),
+                Center(
+                  child: Text(
+                    'v1.0.0',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
               ],
             ),
             actions: [
@@ -58,6 +84,16 @@ class BotonInfo extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  Widget _fila(IconData icono, String texto) {
+    return Row(
+      children: [
+        Icon(icono, size: 16),
+        const SizedBox(width: 8),
+        Expanded(child: Text(texto, style: const TextStyle(fontSize: 13))),
+      ],
     );
   }
 }

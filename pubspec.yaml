@@ -13,6 +13,7 @@ dependencies:
 
   # Gestion de estado reactiva
   flutter_riverpod: ^2.4.9
+  shared_preferences: ^2.2.2
 
   # Base de datos local (Drift y SQLite)
   drift: ^2.14.0
