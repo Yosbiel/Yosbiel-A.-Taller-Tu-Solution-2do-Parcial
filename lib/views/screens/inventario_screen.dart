@@ -35,7 +35,7 @@ class InventarioScreen extends ConsumerWidget {
                   TextFormField(
                     controller: codigoCtrl,
                     decoration: InputDecoration(
-                      labelText: 'Codigo',
+                      labelText: 'Código',
                       errorText: errorServidor,
                     ),
                     validator: (v) =>

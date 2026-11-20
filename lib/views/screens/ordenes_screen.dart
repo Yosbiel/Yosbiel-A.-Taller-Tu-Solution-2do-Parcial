@@ -40,7 +40,7 @@ class OrdenesScreen extends ConsumerWidget {
                       children: [
                         EstadoPildora(estado: orden.estado),
                         const SizedBox(width: 8),
-                        Expanded(child: Text('Tecnico: $tecnico')),
+                        Expanded(child: Text('Técnico: $tecnico')),
                       ],
                     ),
                   ),

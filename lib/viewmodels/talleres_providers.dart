@@ -94,3 +94,9 @@ final themeModeProvider =
     StateNotifierProvider<ThemeModeNotifier, ThemeMode>((ref) {
   return ThemeModeNotifier();
 });
+
+final historialCompletoProvider =
+    FutureProvider.autoDispose<List<HistorialOrdenItem>>((ref) async {
+  final dao = ref.watch(talleresDaoProvider);
+  return await dao.obtenerHistorialCompleto();
+});

@@ -626,4 +626,25 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
   Stream<Map<String, int>> watchCargaTrabajoPorTecnico() {
     return watchOrdenesAbiertas().asyncMap((_) => obtenerCargaTrabajoPorTecnico());
   }
+
+  // Devuelve todas las ordenes (historial completo), ordenadas por fecha desc.
+  Future<List<HistorialOrdenItem>> obtenerHistorialCompleto() async {
+    final query = select(db.ordenesReparacion).join([
+      innerJoin(db.equipos, db.equipos.id.equalsExp(db.ordenesReparacion.equipoId)),
+      innerJoin(db.clientes, db.clientes.id.equalsExp(db.equipos.clienteId)),
+    ])
+      ..orderBy([OrderingTerm.desc(db.ordenesReparacion.fechaCreacion)]);
+    final rows = await query.get();
+    final result = <HistorialOrdenItem>[];
+    for (final row in rows) {
+      final orden = row.readTable(db.ordenesReparacion);
+      result.add(HistorialOrdenItem(
+        orden: orden,
+        equipo: row.readTable(db.equipos),
+        cliente: row.readTable(db.clientes),
+        tecnicoNombre: await _nombreTecnico(orden.tecnicoId),
+      ));
+    }
+    return result;
+  }
 }

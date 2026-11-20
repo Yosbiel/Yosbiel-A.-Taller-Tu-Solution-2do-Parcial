@@ -105,6 +105,55 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
     );
   }
 
+  Widget _seccionHistorial({
+    required String titulo,
+    required TextEditingController ctrl,
+    required String busqueda,
+    required void Function(String) onChanged,
+    required bool mostrarCliente,
+  }) {
+    final theme = Theme.of(context);
+    final async = busqueda.isEmpty
+        ? ref.watch(historialCompletoProvider)
+        : (mostrarCliente
+            ? ref.watch(historialClienteProvider(busqueda))
+            : ref.watch(historialEquipoProvider(busqueda)));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(titulo,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: ctrl,
+          decoration: InputDecoration(
+            labelText: 'Escribe para filtrar',
+            prefixIcon: Icon(Icons.search, color: theme.colorScheme.primary),
+          ),
+          onChanged: onChanged,
+        ),
+        const SizedBox(height: 10),
+        async.when(
+          loading: () => const Padding(
+            padding: EdgeInsets.all(8.0),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (e, _) => Text('Error: $e'),
+          data: (res) {
+            if (res.isEmpty) {
+              return const Text('Sin resultados.');
+            }
+            return Column(
+              children: res
+                  .map((i) => _tarjeta(i, mostrarCliente: mostrarCliente))
+                  .toList(),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cargaAsync = ref.watch(cargaTrabajoProvider);
@@ -136,7 +185,7 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
                     error: (e, _) => Text('Error: $e'),
                     data: (carga) {
                       if (carga.isEmpty) {
-                        return const Text('No hay ordenes activas.');
+                        return const Text('No hay órdenes activas.');
                       }
                       return Column(
                         children: carga.entries.map((e) {
@@ -195,76 +244,25 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
                 padding: const EdgeInsets.all(16),
                 children: [
                   const Text(
-                    'Busca el historial de un equipo o de un cliente',
-                    style:
-                        TextStyle(fontSize: 13, fontStyle: FontStyle.italic),
+                    'Historial de reparaciones. Sin filtro se muestran todas; escribe para buscar por equipo o cliente.',
+                    style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
                   ),
                   const SizedBox(height: 12),
-                  const Text('Historial por equipo (serie, marca o modelo)',
-                      style: TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _equipoCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Escribe para buscar',
-                      prefixIcon: Icon(Icons.search),
-                    ),
+                  _seccionHistorial(
+                    titulo: 'Historial por equipo (serie, marca o modelo)',
+                    ctrl: _equipoCtrl,
+                    busqueda: _busquedaEquipo,
                     onChanged: _onBuscarEquipo,
+                    mostrarCliente: false,
                   ),
-                  const SizedBox(height: 10),
-                  if (_busquedaEquipo.isNotEmpty)
-                    ref.watch(historialEquipoProvider(_busquedaEquipo)).when(
-                          loading: () => const Padding(
-                            padding: EdgeInsets.all(8.0),
-                            child: Center(child: CircularProgressIndicator()),
-                          ),
-                          error: (e, _) => Text('Error: $e'),
-                          data: (res) {
-                            if (res.isEmpty) {
-                              return const Text('Sin resultados.');
-                            }
-                            return Column(
-                              children: res
-                                  .map((i) =>
-                                      _tarjeta(i, mostrarCliente: false))
-                                  .toList(),
-                            );
-                          },
-                        ),
                   const Divider(height: 32),
-                  const Text('Historial por cliente (nombre o teléfono)',
-                      style: TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _clienteCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Escribe para buscar',
-                      prefixIcon: Icon(Icons.search),
-                    ),
+                  _seccionHistorial(
+                    titulo: 'Historial por cliente (nombre o teléfono)',
+                    ctrl: _clienteCtrl,
+                    busqueda: _busquedaCliente,
                     onChanged: _onBuscarCliente,
+                    mostrarCliente: true,
                   ),
-                  const SizedBox(height: 10),
-                  if (_busquedaCliente.isNotEmpty)
-                    ref.watch(historialClienteProvider(_busquedaCliente)).when(
-                          loading: () => const Padding(
-                            padding: EdgeInsets.all(8.0),
-                            child: Center(child: CircularProgressIndicator()),
-                          ),
-                          error: (e, _) => Text('Error: $e'),
-                          data: (res) {
-                            if (res.isEmpty) {
-                              return const Text('Sin resultados.');
-                            }
-                            return Column(
-                              children: res
-                                  .map((i) =>
-                                      _tarjeta(i, mostrarCliente: true))
-                                  .toList(),
-                            );
-                          },
-                        ),
                 ],
               ),
             ],

@@ -284,7 +284,7 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
               ),
               const Divider(height: 24),
               if (_esFinal)
-                Text('Tecnico: $nombreTecnico',
+                Text('Técnico: $nombreTecnico',
                     style: const TextStyle(fontSize: 14))
               else ...[
                 DropdownButtonFormField<int?>(
