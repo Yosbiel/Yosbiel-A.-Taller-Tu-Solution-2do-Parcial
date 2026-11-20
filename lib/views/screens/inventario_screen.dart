@@ -1,101 +1,165 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../data/database/app_database.dart';
 import '../../viewmodels/talleres_providers.dart';
 
 class InventarioScreen extends ConsumerWidget {
   const InventarioScreen({Key? key}) : super(key: key);
 
-  void _mostrarDialogoNuevoRepuesto(BuildContext context, WidgetRef ref) {
-    final codigoCtrl = TextEditingController();
-    final nombreCtrl = TextEditingController();
-    final precioCtrl = TextEditingController();
-    final stockCtrl = TextEditingController();
+  void _mostrarFormulario(
+    BuildContext context,
+    WidgetRef ref, {
+    RepuestosData? repuesto,
+  }) {
+    final esEdicion = repuesto != null;
+    final codigoCtrl = TextEditingController(text: repuesto?.codigo ?? '');
+    final nombreCtrl = TextEditingController(text: repuesto?.nombre ?? '');
+    final precioCtrl = TextEditingController(
+      text: repuesto != null ? repuesto.precio.toString() : '',
+    );
+    final stockCtrl = TextEditingController(
+      text: repuesto != null ? repuesto.existencias.toString() : '',
+    );
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Nuevo Repuesto'),
+        title: Text(esEdicion ? 'Editar repuesto' : 'Nuevo repuesto'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(controller: codigoCtrl, decoration: const InputDecoration(labelText: 'Código')),
-              TextField(controller: nombreCtrl, decoration: const InputDecoration(labelText: 'Nombre')),
+              TextField(
+                controller: codigoCtrl,
+                decoration: const InputDecoration(labelText: 'Codigo'),
+              ),
+              TextField(
+                controller: nombreCtrl,
+                decoration: const InputDecoration(labelText: 'Nombre'),
+              ),
               TextField(
                 controller: precioCtrl,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(labelText: 'Precio'),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),
               TextField(
                 controller: stockCtrl,
-                decoration: const InputDecoration(labelText: 'Existencias iniciales'),
                 keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Existencias'),
               ),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
           ElevatedButton(
             onPressed: () async {
               final codigo = codigoCtrl.text.trim();
               final nombre = nombreCtrl.text.trim();
-              final precio = double.tryParse(precioCtrl.text.trim().replaceAll(',', '.'));
+              final precio =
+                  double.tryParse(precioCtrl.text.trim().replaceAll(',', '.'));
               final stock = int.tryParse(stockCtrl.text.trim());
-
               if (codigo.isEmpty || nombre.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Código y nombre son obligatorios.')),
+                  const SnackBar(content: Text('Codigo y nombre son obligatorios.')),
                 );
                 return;
               }
               if (precio == null || precio < 0 || stock == null || stock < 0) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Ingresa precio y existencias válidas (0 o mayores).')),
+                  const SnackBar(content: Text('Precio y stock deben ser validos.')),
                 );
                 return;
               }
-
               try {
                 final dao = ref.read(talleresDaoProvider);
-                await dao.insertarRepuesto(codigo, nombre, precio, stock);
-                ref.invalidate(todosRepuestosProvider);
-                ref.invalidate(repuestosStockBajoProvider);
+                if (esEdicion) {
+                  await dao.actualizarRepuesto(
+                    id: repuesto.id,
+                    codigo: codigo,
+                    nombre: nombre,
+                    precio: precio,
+                    existencias: stock,
+                  );
+                } else {
+                  await dao.insertarRepuesto(codigo, nombre, precio, stock);
+                }
                 if (ctx.mounted) Navigator.pop(ctx);
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error al guardar repuesto: $e')),
+                    SnackBar(content: Text('Error: $e')),
                   );
                 }
               }
             },
-            child: const Text('Guardar'),
+            child: Text(esEdicion ? 'Guardar' : 'Crear'),
           ),
         ],
       ),
     );
   }
 
+  Future<void> _confirmarEliminar(
+    BuildContext context,
+    WidgetRef ref,
+    RepuestosData repuesto,
+  ) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar repuesto'),
+        content: Text(
+          'Se eliminara "${repuesto.nombre}" (${repuesto.codigo}). '
+          'Esta accion no se puede deshacer.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      final dao = ref.read(talleresDaoProvider);
+      await dao.eliminarRepuesto(repuesto.id);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo eliminar: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final repuestosAsync = ref.watch(todosRepuestosProvider);
-
     return Scaffold(
-      appBar: AppBar(title: const Text('Almacén de Repuestos')),
+      appBar: AppBar(title: const Text('Almacen de repuestos')),
       body: repuestosAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(child: Text('Error: $err')),
+        error: (e, _) => Center(child: Text('Error: $e')),
         data: (lista) {
           if (lista.isEmpty) {
-            return const Center(child: Text('No hay repuestos registrados en el almacén.'));
+            return const Center(child: Text('No hay repuestos registrados.'));
           }
           return ListView.builder(
             itemCount: lista.length,
-            itemBuilder: (context, index) {
-              final item = lista[index];
+            itemBuilder: (context, i) {
+              final item = lista[i];
               final stockBajo = item.existencias <= 3;
-
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 child: ListTile(
@@ -105,12 +169,30 @@ class InventarioScreen extends ConsumerWidget {
                   ),
                   title: Text('${item.nombre} (${item.codigo})'),
                   subtitle: Text('Precio: \$${item.precio.toStringAsFixed(2)}'),
-                  trailing: Text(
-                    'Stock: ${item.existencias}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: stockBajo ? Colors.red : Colors.black,
-                    ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Stock: ${item.existencias}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: stockBajo ? Colors.red : null,
+                        ),
+                      ),
+                      PopupMenuButton<String>(
+                        onSelected: (v) {
+                          if (v == 'editar') {
+                            _mostrarFormulario(context, ref, repuesto: item);
+                          } else if (v == 'eliminar') {
+                            _confirmarEliminar(context, ref, item);
+                          }
+                        },
+                        itemBuilder: (_) => const [
+                          PopupMenuItem(value: 'editar', child: Text('Editar')),
+                          PopupMenuItem(value: 'eliminar', child: Text('Eliminar')),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               );
@@ -119,7 +201,7 @@ class InventarioScreen extends ConsumerWidget {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _mostrarDialogoNuevoRepuesto(context, ref),
+        onPressed: () => _mostrarFormulario(context, ref),
         child: const Icon(Icons.add),
       ),
     );
