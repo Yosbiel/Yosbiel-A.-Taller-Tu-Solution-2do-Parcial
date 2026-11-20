@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/daos/talleres_dao.dart';
 import '../../viewmodels/talleres_providers.dart';
 import '../widgets/estado_pildora.dart';
 import 'nueva_orden_screen.dart';
@@ -15,7 +14,6 @@ class OrdenesScreen extends ConsumerWidget {
     final tecnicosAsync = ref.watch(tecnicosProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Tu Solution - Taller')),
       body: ordenesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, _) => Center(child: Text('Error: $err')),

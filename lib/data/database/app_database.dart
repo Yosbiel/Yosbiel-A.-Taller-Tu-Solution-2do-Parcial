@@ -24,22 +24,17 @@ part 'app_database.g.dart';
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
-  // Version 2: se anade la tabla Tecnicos y la columna tecnicoId en ordenes.
+  // v3: nombres reales de tecnicos.
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration {
     return MigrationStrategy(
-      // Primera instalacion: crear todo y sembrar los 3 tecnicos.
       onCreate: (m) async {
         await m.createAll();
         await _seedTecnicos();
       },
-      // Migracion v1 -> v2: agregar tabla Tecnicos y recrear ordenes.
-      // Como en v1 no hay datos reales, se dropea ordenes_reparacion y se
-      // vuelve a crear con la nueva columna tecnicoId. Si hubiera datos
-      // reales, habria que migrar el texto tecnicoAsignado a un id.
       onUpgrade: (m, from, to) async {
         if (from < 2) {
           await m.createTable(tecnicos);
@@ -47,13 +42,17 @@ class AppDatabase extends _$AppDatabase {
           await m.createTable(ordenesReparacion);
           await _seedTecnicos();
         }
+        if (from < 3) {
+          // v3: borrar los tecnicos viejos ("Tecnico 1..3") y sembrar los reales.
+          await delete(tecnicos).go();
+          await _seedTecnicos();
+        }
       },
     );
   }
 
-  // Inserta los 3 tecnicos fijos del taller.
   Future<void> _seedTecnicos() async {
-    const nombres = ['Tecnico 1', 'Tecnico 2', 'Tecnico 3'];
+    const nombres = ['Carlos', 'Ana', 'Luis'];
     for (final n in nombres) {
       await into(tecnicos).insert(TecnicosCompanion.insert(nombre: n));
     }

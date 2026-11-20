@@ -14,10 +14,9 @@ class TuSolutionApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
 
-    // Tema base con Poppins y Material 3.
     ThemeData buildTheme(Brightness brightness) {
       final scheme = ColorScheme.fromSeed(
-        seedColor: Colors.blue,
+        seedColor: Colors.teal,
         brightness: brightness,
       );
       return ThemeData(
