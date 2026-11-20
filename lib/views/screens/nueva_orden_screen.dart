@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../viewmodels/talleres_providers.dart';
 
@@ -11,14 +12,12 @@ class NuevaOrdenScreen extends ConsumerStatefulWidget {
 
 class _NuevaOrdenScreenState extends ConsumerState<NuevaOrdenScreen> {
   final _formKey = GlobalKey<FormState>();
-
   final _nombreCtrl = TextEditingController();
   final _telefonoCtrl = TextEditingController();
   final _marcaCtrl = TextEditingController();
   final _modeloCtrl = TextEditingController();
   final _serieCtrl = TextEditingController();
   final _fallaCtrl = TextEditingController();
-
   String _tipoSeleccionado = 'Celular';
   bool _guardando = false;
 
@@ -33,107 +32,143 @@ class _NuevaOrdenScreenState extends ConsumerState<NuevaOrdenScreen> {
     super.dispose();
   }
 
-  String? _validarObligatorio(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Campo obligatorio';
+  // Normaliza el telefono: quita espacios, guiones y parentesis.
+  String _normalizarTelefono(String t) {
+    return t.replaceAll(RegExp(r'[\s\-\(\)]'), '');
+  }
+
+  String? _validarNoVacio(String? v) {
+    if (v == null || v.trim().isEmpty) return 'Campo obligatorio';
+    return null;
+  }
+
+  String? _validarTelefono(String? v) {
+    final normalizado = _normalizarTelefono(v ?? '');
+    if (normalizado.isEmpty) return 'Campo obligatorio';
+    if (!RegExp(r'^\+?\d{7,15}$').hasMatch(normalizado)) {
+      return 'Telefono invalido (7-15 digitos, opcional +)';
     }
     return null;
   }
 
   Future<void> _guardarOrden() async {
     if (_guardando) return;
-    if (_formKey.currentState!.validate()) {
-      setState(() => _guardando = true);
-      try {
-        final dao = ref.read(talleresDaoProvider);
-
-        await dao.registrarNuevaOrdenCompleta(
-          nombreCliente: _nombreCtrl.text.trim(),
-          telefonoCliente: _telefonoCtrl.text.trim(),
-          tipoEquipo: _tipoSeleccionado,
-          marca: _marcaCtrl.text.trim(),
-          modelo: _modeloCtrl.text.trim(),
-          numeroSerie: _serieCtrl.text.trim(),
-          fallaReportada: _fallaCtrl.text.trim(),
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _guardando = true);
+    try {
+      final dao = ref.read(talleresDaoProvider);
+      await dao.registrarNuevaOrdenCompleta(
+        nombreCliente: _nombreCtrl.text.trim(),
+        telefonoCliente: _normalizarTelefono(_telefonoCtrl.text),
+        tipoEquipo: _tipoSeleccionado,
+        marca: _marcaCtrl.text.trim(),
+        modelo: _modeloCtrl.text.trim(),
+        numeroSerie: _serieCtrl.text.trim(),
+        fallaReportada: _fallaCtrl.text.trim(),
+      );
+      if (!mounted) return;
+      Navigator.pop(context);
+    } on StateError catch (e) {
+      if (!mounted) return;
+      // Serie ya registrada a otro dueno: mostrar dialogo claro.
+      final mensaje = e.message;
+      if (mensaje.contains('ya esta registrado a nombre de')) {
+        await showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Equipo ya registrado'),
+            content: Text(mensaje),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Entendido'),
+              ),
+            ],
+          ),
         );
-
-        ref.invalidate(ordenesAbiertasProvider);
-
-        if (mounted) {
-          Navigator.pop(context);
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error al registrar la orden: $e')),
-          );
-        }
-      } finally {
-        if (mounted) {
-          setState(() => _guardando = false);
-        }
+      } else {
+        _mostrarSnack('Error: $mensaje');
       }
+    } catch (e) {
+      if (!mounted) return;
+      _mostrarSnack('Error: $e');
+    } finally {
+      if (mounted) setState(() => _guardando = false);
     }
+  }
+
+  void _mostrarSnack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Nueva Orden de Reparación')),
+      appBar: AppBar(title: const Text('Nueva orden')),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            const Text('Datos del Cliente', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const Text('Datos del cliente',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             TextFormField(
               controller: _nombreCtrl,
-              decoration: const InputDecoration(labelText: 'Nombre del dueño'),
-              validator: _validarObligatorio,
+              decoration: const InputDecoration(labelText: 'Nombre del dueno'),
+              validator: _validarNoVacio,
             ),
             TextFormField(
               controller: _telefonoCtrl,
-              decoration: const InputDecoration(labelText: 'Teléfono'),
+              decoration: const InputDecoration(
+                labelText: 'Telefono',
+                helperText: 'Ej: +5355123456 o 5512-3456',
+              ),
               keyboardType: TextInputType.phone,
-              validator: _validarObligatorio,
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[\d\+\s\-\(\)]')),
+              ],
+              validator: _validarTelefono,
             ),
             const SizedBox(height: 20),
-            const Text('Datos del Equipo', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const Text('Datos del equipo',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             DropdownButtonFormField<String>(
               value: _tipoSeleccionado,
               decoration: const InputDecoration(labelText: 'Tipo de equipo'),
-              items: ['Celular', 'Tablet', 'Laptop']
-                  .map((tipo) => DropdownMenuItem(value: tipo, child: Text(tipo)))
+              items: const ['Celular', 'Tablet', 'Laptop']
+                  .map((t) => DropdownMenuItem(value: t, child: Text(t)))
                   .toList(),
-              onChanged: (val) {
-                if (val != null) setState(() => _tipoSeleccionado = val);
+              onChanged: (v) {
+                if (v != null) setState(() => _tipoSeleccionado = v);
               },
             ),
             TextFormField(
               controller: _marcaCtrl,
               decoration: const InputDecoration(labelText: 'Marca'),
-              validator: _validarObligatorio,
+              validator: _validarNoVacio,
             ),
             TextFormField(
               controller: _modeloCtrl,
               decoration: const InputDecoration(labelText: 'Modelo'),
-              validator: _validarObligatorio,
+              validator: _validarNoVacio,
             ),
             TextFormField(
               controller: _serieCtrl,
-              decoration: const InputDecoration(labelText: 'Número de serie'),
-              validator: _validarObligatorio,
+              decoration: const InputDecoration(
+                labelText: 'Numero de serie',
+                helperText: 'Opcional si el equipo no tiene serie',
+              ),
             ),
             TextFormField(
               controller: _fallaCtrl,
               decoration: const InputDecoration(labelText: 'Falla reportada'),
               maxLines: 2,
-              validator: _validarObligatorio,
+              validator: _validarNoVacio,
             ),
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _guardando ? null : _guardarOrden,
-              child: Text(_guardando ? 'Guardando...' : 'Registrar Orden'),
+              child: Text(_guardando ? 'Guardando...' : 'Registrar orden'),
             ),
           ],
         ),

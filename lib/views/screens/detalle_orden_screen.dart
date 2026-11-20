@@ -16,33 +16,43 @@ class DetalleOrdenScreen extends ConsumerStatefulWidget {
 
 class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
   late String _estadoActual;
+  late String _estadoOriginal;
   int? _tecnicoId;
+  int? _tecnicoOriginal;
   final _trabajoDescCtrl = TextEditingController();
   final _trabajoCostoCtrl = TextEditingController();
+
+  static const _todosEstados = [
+    'recibida',
+    'en_reparacion',
+    'lista',
+    'entregada',
+    'cancelada',
+  ];
+
+  static const _transiciones = {
+    'recibida': ['en_reparacion', 'cancelada'],
+    'en_reparacion': ['lista', 'cancelada'],
+    'lista': ['entregada', 'cancelada'],
+    'entregada': <String>[],
+    'cancelada': <String>[],
+  };
 
   bool get _esFinal =>
       _estadoActual == 'entregada' || _estadoActual == 'cancelada';
 
   bool get _puedeEditarTrabajo => _estadoActual == 'en_reparacion';
 
-  List<String> get _estadosDisponibles {
-    switch (_estadoActual) {
-      case 'recibida':
-        return ['recibida', 'en_reparacion', 'cancelada'];
-      case 'en_reparacion':
-        return ['en_reparacion', 'lista', 'cancelada'];
-      case 'lista':
-        return ['lista', 'entregada', 'cancelada'];
-      default:
-        return [_estadoActual];
-    }
-  }
+  bool get _hayCambios =>
+      _estadoActual != _estadoOriginal || _tecnicoId != _tecnicoOriginal;
 
   @override
   void initState() {
     super.initState();
     _estadoActual = widget.orden.estado;
+    _estadoOriginal = widget.orden.estado;
     _tecnicoId = widget.orden.tecnicoId;
+    _tecnicoOriginal = widget.orden.tecnicoId;
   }
 
   @override
@@ -55,7 +65,7 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
   Future<void> _guardar(DetalleOrdenViewModel vm) async {
     try {
       final dao = ref.read(talleresDaoProvider);
-      if (_tecnicoId != widget.orden.tecnicoId) {
+      if (_tecnicoId != _tecnicoOriginal) {
         await dao.reasignarTecnicoUI(widget.orden.id, _tecnicoId);
       }
       await vm.guardarCambios(_estadoActual, _tecnicoId);
@@ -113,7 +123,7 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
         double.tryParse(_trabajoCostoCtrl.text.trim().replaceAll(',', '.'));
     if (desc.isEmpty || costo == null || costo <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Descripcion y costo validos requeridos.')),
+        const SnackBar(content: Text('Descripcion y costo validos.')),
       );
       return;
     }
@@ -173,7 +183,6 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
       ),
     );
     if (sel == null || !mounted) return;
-
     final cant = await showDialog<int>(
       context: context,
       builder: (ctx) {
@@ -187,14 +196,11 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
               controller: ctrl,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: 'Cantidad (max ${sel.existencias})',
-              ),
+                  labelText: 'Cantidad (max ${sel.existencias})'),
               validator: (v) {
                 final n = int.tryParse((v ?? '').trim());
                 if (n == null || n <= 0) return 'Cantidad invalida';
-                if (n > sel.existencias) {
-                  return 'Solo hay ${sel.existencias} en stock';
-                }
+                if (n > sel.existencias) return 'Solo hay ${sel.existencias}';
                 return null;
               },
             ),
@@ -251,6 +257,8 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
                       .map((t) => t.nombre)
                       .firstOrNull ??
                   'Sin asignar';
+          // Estados destino permitidos desde el original (no desde el actual).
+          final permitidos = _transiciones[_estadoOriginal] ?? const [];
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
@@ -306,20 +314,45 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
                 DropdownButtonFormField<String>(
                   value: _estadoActual,
                   decoration: const InputDecoration(labelText: 'Estado'),
-                  items: _estadosDisponibles
-                      .map((e) =>
-                          DropdownMenuItem(value: e, child: Text(e)))
-                      .toList(),
+                  items: _todosEstados.map((e) {
+                    final esActual = e == _estadoActual;
+                    final esPermitido = permitidos.contains(e) || esActual;
+                    return DropdownMenuItem<String>(
+                      value: e,
+                      enabled: esPermitido,
+                      child: Text(
+                        estadoBonito(e) +
+                            (esPermitido ? '' : '  (no permitido)'),
+                        style: TextStyle(
+                          color: esPermitido
+                              ? null
+                              : theme.disabledColor,
+                        ),
+                      ),
+                    );
+                  }).toList(),
                   onChanged: (v) {
                     if (v != null) setState(() => _estadoActual = v);
                   },
                 ),
                 const SizedBox(height: 12),
                 ElevatedButton(
-                  onPressed: state.guardando ? null : () => _guardar(vm),
-                  child:
-                      Text(state.guardando ? 'Guardando...' : 'Guardar'),
+                  onPressed: (!_hayCambios || state.guardando)
+                      ? null
+                      : () => _guardar(vm),
+                  child: Text(state.guardando ? 'Guardando...' : 'Guardar'),
                 ),
+                if (_hayCambios)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      'Hay cambios sin guardar',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: theme.colorScheme.tertiary,
+                      ),
+                    ),
+                  ),
               ],
               if (_puedeEditarTrabajo) ...[
                 const Divider(height: 32),

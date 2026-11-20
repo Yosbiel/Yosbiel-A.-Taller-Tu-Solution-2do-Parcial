@@ -16,110 +16,123 @@ class InventarioScreen extends ConsumerWidget {
     final codigoCtrl = TextEditingController(text: repuesto?.codigo ?? '');
     final nombreCtrl = TextEditingController(text: repuesto?.nombre ?? '');
     final precioCtrl = TextEditingController(
-      text: repuesto != null ? repuesto.precio.toString() : '',
-    );
+        text: repuesto != null ? repuesto.precio.toString() : '');
     final stockCtrl = TextEditingController(
-      text: repuesto != null ? repuesto.existencias.toString() : '',
-    );
+        text: repuesto != null ? repuesto.existencias.toString() : '');
+    String? errorServidor;
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(esEdicion ? 'Editar repuesto' : 'Nuevo repuesto'),
-        content: Form(
-          key: formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: codigoCtrl,
-                  decoration: const InputDecoration(labelText: 'Codigo'),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Obligatorio' : null,
-                ),
-                TextFormField(
-                  controller: nombreCtrl,
-                  decoration: const InputDecoration(labelText: 'Nombre'),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Obligatorio' : null,
-                ),
-                TextFormField(
-                  controller: precioCtrl,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'Precio'),
-                  validator: (v) {
-                    final n =
-                        double.tryParse((v ?? '').trim().replaceAll(',', '.'));
-                    if (n == null || n < 0) return 'Precio invalido';
-                    return null;
-                  },
-                ),
-                TextFormField(
-                  controller: stockCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Existencias'),
-                  validator: (v) {
-                    final n = int.tryParse((v ?? '').trim());
-                    if (n == null || n < 0) return 'Stock invalido';
-                    return null;
-                  },
-                ),
-              ],
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => AlertDialog(
+          title: Text(esEdicion ? 'Editar repuesto' : 'Nuevo repuesto'),
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: codigoCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'Codigo',
+                      errorText: errorServidor,
+                    ),
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? 'Obligatorio' : null,
+                  ),
+                  TextFormField(
+                    controller: nombreCtrl,
+                    decoration: const InputDecoration(labelText: 'Nombre'),
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? 'Obligatorio' : null,
+                  ),
+                  TextFormField(
+                    controller: precioCtrl,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(labelText: 'Precio'),
+                    validator: (v) {
+                      final n = double.tryParse(
+                          (v ?? '').trim().replaceAll(',', '.'));
+                      if (n == null || n < 0) return 'Precio invalido';
+                      return null;
+                    },
+                  ),
+                  TextFormField(
+                    controller: stockCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration:
+                        const InputDecoration(labelText: 'Existencias'),
+                    validator: (v) {
+                      final n = int.tryParse((v ?? '').trim());
+                      if (n == null || n < 0) return 'Stock invalido';
+                      return null;
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                setDlgState(() => errorServidor = null);
+                if (!formKey.currentState!.validate()) return;
+                final precio = double.parse(
+                    precioCtrl.text.trim().replaceAll(',', '.'));
+                final stock = int.parse(stockCtrl.text.trim());
+                try {
+                  final dao = ref.read(talleresDaoProvider);
+                  if (esEdicion) {
+                    await dao.actualizarRepuesto(
+                      id: repuesto.id,
+                      codigo: codigoCtrl.text.trim(),
+                      nombre: nombreCtrl.text.trim(),
+                      precio: precio,
+                      existencias: stock,
+                    );
+                  } else {
+                    await dao.insertarRepuesto(
+                      codigoCtrl.text.trim(),
+                      nombreCtrl.text.trim(),
+                      precio,
+                      stock,
+                    );
+                  }
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(esEdicion
+                            ? 'Repuesto actualizado'
+                            : 'Repuesto creado'),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  // Error de codigo duplicado -> inline en el campo Codigo.
+                  final msg = e.toString();
+                  if (msg.contains('Ya existe')) {
+                    setDlgState(() => errorServidor =
+                        'Ya existe un repuesto con ese codigo');
+                  } else {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: $e')),
+                      );
+                    }
+                  }
+                }
+              },
+              child: Text(esEdicion ? 'Guardar' : 'Crear'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (!formKey.currentState!.validate()) return;
-              final precio = double.parse(
-                  precioCtrl.text.trim().replaceAll(',', '.'));
-              final stock = int.parse(stockCtrl.text.trim());
-              try {
-                final dao = ref.read(talleresDaoProvider);
-                if (esEdicion) {
-                  await dao.actualizarRepuesto(
-                    id: repuesto.id,
-                    codigo: codigoCtrl.text.trim(),
-                    nombre: nombreCtrl.text.trim(),
-                    precio: precio,
-                    existencias: stock,
-                  );
-                } else {
-                  await dao.insertarRepuesto(
-                    codigoCtrl.text.trim(),
-                    nombreCtrl.text.trim(),
-                    precio,
-                    stock,
-                  );
-                }
-                if (ctx.mounted) Navigator.pop(ctx);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(esEdicion
-                          ? 'Repuesto actualizado'
-                          : 'Repuesto creado'),
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: $e')),
-                  );
-                }
-              }
-            },
-            child: Text(esEdicion ? 'Guardar' : 'Crear'),
-          ),
-        ],
       ),
     );
   }
@@ -134,9 +147,7 @@ class InventarioScreen extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         title: const Text('Eliminar repuesto'),
         content: Text(
-          'Se eliminara "${repuesto.nombre}" (${repuesto.codigo}). '
-          'No se puede deshacer.',
-        ),
+            'Se eliminara "${repuesto.nombre}" (${repuesto.codigo}).'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -181,7 +192,7 @@ class InventarioScreen extends ConsumerWidget {
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (lista) {
           if (lista.isEmpty) {
-            return const Center(child: Text('No hay repuestos registrados.'));
+            return const Center(child: Text('No hay repuestos.'));
           }
           return ListView.builder(
             itemCount: lista.length,
@@ -189,7 +200,8 @@ class InventarioScreen extends ConsumerWidget {
               final item = lista[i];
               final stockBajo = item.existencias <= 3;
               return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                margin:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 child: ListTile(
                   leading: Icon(
                     stockBajo
@@ -221,7 +233,8 @@ class InventarioScreen extends ConsumerWidget {
                           }
                         },
                         itemBuilder: (_) => const [
-                          PopupMenuItem(value: 'editar', child: Text('Editar')),
+                          PopupMenuItem(
+                              value: 'editar', child: Text('Editar')),
                           PopupMenuItem(
                               value: 'eliminar', child: Text('Eliminar')),
                         ],
