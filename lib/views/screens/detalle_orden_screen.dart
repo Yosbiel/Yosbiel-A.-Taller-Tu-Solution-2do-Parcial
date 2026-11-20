@@ -123,7 +123,7 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
         double.tryParse(_trabajoCostoCtrl.text.trim().replaceAll(',', '.'));
     if (desc.isEmpty || costo == null || costo <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Descripcion y costo validos.')),
+        const SnackBar(content: Text('Descripción y costo válidos.')),
       );
       return;
     }
@@ -290,7 +290,7 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
                 DropdownButtonFormField<int?>(
                   value: _tecnicoId,
                   decoration:
-                      const InputDecoration(labelText: 'Tecnico responsable'),
+                      const InputDecoration(labelText: 'Técnico responsable'),
                   items: [
                     const DropdownMenuItem<int?>(
                         value: null, child: Text('Sin asignar')),
@@ -331,8 +331,36 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
                       ),
                     );
                   }).toList(),
-                  onChanged: (v) {
-                    if (v != null) setState(() => _estadoActual = v);
+                  onChanged: (v) async {
+                    if (v == null) return;
+                    final esFinalNuevo = v == 'entregada' || v == 'cancelada';
+                    if (esFinalNuevo) {
+                      final ok = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: Text('Confirmar ${estadoBonito(v).toLowerCase()}'),
+                          content: Text(
+                            'La orden pasara a "${estadoBonito(v)}" y no podra modificarse despues. Continuar?',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text('Cancelar'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: const Text('Confirmar'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (ok != true) return;
+                      setState(() => _estadoActual = v);
+                      final vm = ref.read(detalleOrdenProvider(widget.orden).notifier);
+                      await _guardar(vm);
+                    } else {
+                      setState(() => _estadoActual = v);
+                    }
                   },
                 ),
                 const SizedBox(height: 12),
@@ -361,7 +389,7 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
                         fontWeight: FontWeight.bold, fontSize: 16)),
                 TextField(
                   controller: _trabajoDescCtrl,
-                  decoration: const InputDecoration(labelText: 'Descripcion'),
+                  decoration: const InputDecoration(labelText: 'Descripción'),
                 ),
                 TextField(
                   controller: _trabajoCostoCtrl,
@@ -384,7 +412,7 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
                   onPressed:
                       state.guardando ? null : () => _agregarRepuesto(vm),
                   icon: const Icon(Icons.build_circle),
-                  label: const Text('Anadir repuesto'),
+                  label: const Text('Añadir repuesto'),
                 ),
               ],
               const Divider(height: 32),

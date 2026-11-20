@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/daos/talleres_dao.dart';
@@ -19,6 +20,8 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
   final _clienteCtrl = TextEditingController();
   String _busquedaEquipo = '';
   String _busquedaCliente = '';
+  Timer? _debounceEquipo;
+  Timer? _debounceCliente;
 
   @override
   void initState() {
@@ -28,10 +31,26 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
 
   @override
   void dispose() {
+    _debounceEquipo?.cancel();
+    _debounceCliente?.cancel();
     _tabCtrl.dispose();
     _equipoCtrl.dispose();
     _clienteCtrl.dispose();
     super.dispose();
+  }
+
+  void _onBuscarEquipo(String v) {
+    _debounceEquipo?.cancel();
+    _debounceEquipo = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) setState(() => _busquedaEquipo = v.trim());
+    });
+  }
+
+  void _onBuscarCliente(String v) {
+    _debounceCliente?.cancel();
+    _debounceCliente = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) setState(() => _busquedaCliente = v.trim());
+    });
   }
 
   String _formatearFecha(DateTime fecha) {
@@ -56,18 +75,16 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (mostrarCliente)
-                Text(
-                    'Cliente: ${item.cliente.nombre} (${item.cliente.telefono})')
+                Text('Cliente: ${item.cliente.nombre} (${item.cliente.telefono})')
               else
-                Text(
-                    'Dueno: ${item.cliente.nombre} (${item.cliente.telefono})'),
+                Text('Dueño: ${item.cliente.nombre} (${item.cliente.telefono})'),
               Text('Falla: ${item.orden.fallaReportada}'),
               const SizedBox(height: 4),
               Row(
                 children: [
                   EstadoPildora(estado: item.orden.estado),
                   const SizedBox(width: 8),
-                  Expanded(child: Text('Tecnico: $tecnico')),
+                  Expanded(child: Text('Técnico: $tecnico')),
                 ],
               ),
               Text('Fecha: ${_formatearFecha(item.orden.fechaCreacion)}'),
@@ -110,7 +127,7 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
               ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  const Text('Carga por tecnico',
+                  const Text('Carga por técnico',
                       style: TextStyle(
                           fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
@@ -125,9 +142,9 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
                         children: carga.entries.map((e) {
                           return Card(
                             child: ListTile(
-                              title: Text('Tecnico: ${e.key}'),
+                              title: Text('Técnico: ${e.key}'),
                               trailing: Text(
-                                '${e.value} ordenes activas',
+                                '${e.value} órdenes activas',
                                 style: const TextStyle(
                                     fontWeight: FontWeight.bold),
                               ),
@@ -158,7 +175,7 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
                             color: theme.colorScheme.errorContainer,
                             child: ListTile(
                               title: Text(rep.nombre),
-                              subtitle: Text('Codigo: ${rep.codigo}'),
+                              subtitle: Text('Código: ${rep.codigo}'),
                               trailing: Text(
                                 'Stock: ${rep.existencias}',
                                 style: TextStyle(
@@ -177,27 +194,31 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
               ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  const Text(
+                    'Busca el historial de un equipo o de un cliente',
+                    style:
+                        TextStyle(fontSize: 13, fontStyle: FontStyle.italic),
+                  ),
+                  const SizedBox(height: 12),
                   const Text('Historial por equipo (serie, marca o modelo)',
                       style: TextStyle(
                           fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _equipoCtrl,
-                    decoration: InputDecoration(
-                      labelText: 'Ej. numero de serie, marca o modelo',
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.search),
-                        onPressed: () => setState(() =>
-                            _busquedaEquipo = _equipoCtrl.text.trim()),
-                      ),
+                    decoration: const InputDecoration(
+                      labelText: 'Escribe para buscar',
+                      prefixIcon: Icon(Icons.search),
                     ),
-                    onSubmitted: (v) =>
-                        setState(() => _busquedaEquipo = v.trim()),
+                    onChanged: _onBuscarEquipo,
                   ),
                   const SizedBox(height: 10),
                   if (_busquedaEquipo.isNotEmpty)
                     ref.watch(historialEquipoProvider(_busquedaEquipo)).when(
-                          loading: () => const CircularProgressIndicator(),
+                          loading: () => const Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: Center(child: CircularProgressIndicator()),
+                          ),
                           error: (e, _) => Text('Error: $e'),
                           data: (res) {
                             if (res.isEmpty) {
@@ -212,27 +233,25 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
                           },
                         ),
                   const Divider(height: 32),
-                  const Text('Historial por cliente (nombre o telefono)',
+                  const Text('Historial por cliente (nombre o teléfono)',
                       style: TextStyle(
                           fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _clienteCtrl,
-                    decoration: InputDecoration(
-                      labelText: 'Ej. nombre o telefono',
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.search),
-                        onPressed: () => setState(() =>
-                            _busquedaCliente = _clienteCtrl.text.trim()),
-                      ),
+                    decoration: const InputDecoration(
+                      labelText: 'Escribe para buscar',
+                      prefixIcon: Icon(Icons.search),
                     ),
-                    onSubmitted: (v) =>
-                        setState(() => _busquedaCliente = v.trim()),
+                    onChanged: _onBuscarCliente,
                   ),
                   const SizedBox(height: 10),
                   if (_busquedaCliente.isNotEmpty)
                     ref.watch(historialClienteProvider(_busquedaCliente)).when(
-                          loading: () => const CircularProgressIndicator(),
+                          loading: () => const Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: Center(child: CircularProgressIndicator()),
+                          ),
                           error: (e, _) => Text('Error: $e'),
                           data: (res) {
                             if (res.isEmpty) {

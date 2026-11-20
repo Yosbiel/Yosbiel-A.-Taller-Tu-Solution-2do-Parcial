@@ -67,7 +67,7 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
     }
     if (!_telefonoRegex.hasMatch(limpio)) {
       throw ArgumentError(
-        'Telefono invalido: "$limpio". Debe tener entre 7 y 15 digitos '
+        'Teléfono inválido: "$limpio". Debe tener entre 7 y 15 digitos '
         '(puede empezar con +). Ejemplo: +5355123456 o 55123456.',
       );
     }
@@ -167,8 +167,8 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
           throw StateError(
             'El equipo con serie "$serieLimpia" ya esta registrado a nombre de '
             '${duenoActual.nombre} (${duenoActual.telefono}). '
-            'Si es el mismo dueno, corrige el telefono. '
-            'Si cambio de dueno, usa la opcion "Reasignar equipo".',
+            'Si es el mismo dueño, corrige el teléfono. '
+            'Si cambió de dueño, usa la opción "Reasignar equipo".',
           );
         }
         equipoId = equipoExistente.id;

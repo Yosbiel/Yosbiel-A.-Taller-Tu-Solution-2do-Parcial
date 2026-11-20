@@ -46,7 +46,7 @@ class _NuevaOrdenScreenState extends ConsumerState<NuevaOrdenScreen> {
     final normalizado = _normalizarTelefono(v ?? '');
     if (normalizado.isEmpty) return 'Campo obligatorio';
     if (!RegExp(r'^\+?\d{7,15}$').hasMatch(normalizado)) {
-      return 'Telefono invalido (7-15 digitos, opcional +)';
+      return 'Teléfono inválido (7-15 dígitos, opcional +)';
     }
     return null;
   }
@@ -70,7 +70,7 @@ class _NuevaOrdenScreenState extends ConsumerState<NuevaOrdenScreen> {
       Navigator.pop(context);
     } on StateError catch (e) {
       if (!mounted) return;
-      // Serie ya registrada a otro dueno: mostrar dialogo claro.
+      // Serie ya registrada a otro dueño: mostrar diálogo claro.
       final mensaje = e.message;
       if (mensaje.contains('ya esta registrado a nombre de')) {
         await showDialog(
@@ -114,13 +114,13 @@ class _NuevaOrdenScreenState extends ConsumerState<NuevaOrdenScreen> {
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             TextFormField(
               controller: _nombreCtrl,
-              decoration: const InputDecoration(labelText: 'Nombre del dueno'),
+              decoration: const InputDecoration(labelText: 'Nombre del dueño'),
               validator: _validarNoVacio,
             ),
             TextFormField(
               controller: _telefonoCtrl,
               decoration: const InputDecoration(
-                labelText: 'Telefono',
+                labelText: 'Teléfono',
                 helperText: 'Ej: +5355123456 o 5512-3456',
               ),
               keyboardType: TextInputType.phone,
@@ -155,7 +155,7 @@ class _NuevaOrdenScreenState extends ConsumerState<NuevaOrdenScreen> {
             TextFormField(
               controller: _serieCtrl,
               decoration: const InputDecoration(
-                labelText: 'Numero de serie',
+                labelText: 'Número de serie',
                 helperText: 'Opcional si el equipo no tiene serie',
               ),
             ),

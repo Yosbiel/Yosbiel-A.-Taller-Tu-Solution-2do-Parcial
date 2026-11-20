@@ -54,13 +54,13 @@ class BotonInfo extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Sistema de gestion para taller de reparaciones.',
+                  'Sistema de gestión para taller de reparaciones.',
                   style: TextStyle(fontSize: 14),
                 ),
                 const SizedBox(height: 16),
-                _fila(Icons.school, 'Ingenieria Informatica - 3er año'),
+                _fila(Icons.school, 'Ingeniería Informática - 3er año'),
                 const SizedBox(height: 6),
-                _fila(Icons.phone_android, 'Programacion para Dispositivos Moviles'),
+                _fila(Icons.phone_android, 'Programación para Dispositivos Móviles'),
                 const SizedBox(height: 6),
                 _fila(Icons.code, 'Flutter + Drift + Riverpod'),
                 const SizedBox(height: 12),
@@ -90,7 +90,7 @@ class BotonInfo extends StatelessWidget {
   Widget _fila(IconData icono, String texto) {
     return Row(
       children: [
-        Icon(icono, size: 16),
+        Icon(icono, size: 16, color: Theme.of(context).colorScheme.onSurface),
         const SizedBox(width: 8),
         Expanded(child: Text(texto, style: const TextStyle(fontSize: 13))),
       ],
