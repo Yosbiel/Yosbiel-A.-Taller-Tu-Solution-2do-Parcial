@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/daos/talleres_dao.dart';
 import '../../viewmodels/talleres_providers.dart';
+import '../widgets/estado_pildora.dart';
 import 'detalle_orden_screen.dart';
 
 class ConsultasScreen extends ConsumerStatefulWidget {
@@ -14,7 +15,6 @@ class ConsultasScreen extends ConsumerStatefulWidget {
 class _ConsultasScreenState extends ConsumerState<ConsultasScreen> {
   final _equipoCtrl = TextEditingController();
   final _clienteCtrl = TextEditingController();
-
   String _busquedaEquipo = '';
   String _busquedaCliente = '';
 
@@ -32,7 +32,8 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen> {
     return '$d/$m/$y';
   }
 
-  Widget _construirTarjetaHistorial(HistorialOrdenItem item, {required bool mostrarCliente}) {
+  Widget _tarjeta(HistorialOrdenItem item, {required bool mostrarCliente}) {
+    final tecnico = item.tecnicoNombre ?? 'Sin asignar';
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
@@ -40,14 +41,27 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen> {
           '${item.equipo.tipo} ${item.equipo.marca} ${item.equipo.modelo} (S/N: ${item.equipo.numeroSerie})',
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        subtitle: Text(
-          mostrarCliente
-              ? 'Cliente: ${item.cliente.nombre} (${item.cliente.telefono})\n'
-                  'Falla: ${item.orden.fallaReportada}\n'
-                  'Estado: ${item.orden.estado} | Técnico: ${item.orden.tecnicoAsignado ?? "Sin asignar"} | Fecha: ${_formatearFecha(item.orden.fechaCreacion)}'
-              : 'Falla: ${item.orden.fallaReportada}\n'
-                  'Dueño: ${item.cliente.nombre} (${item.cliente.telefono})\n'
-                  'Estado: ${item.orden.estado} | Técnico: ${item.orden.tecnicoAsignado ?? "Sin asignar"} | Fecha: ${_formatearFecha(item.orden.fechaCreacion)}',
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (mostrarCliente)
+                Text('Cliente: ${item.cliente.nombre} (${item.cliente.telefono})')
+              else
+                Text('Dueno: ${item.cliente.nombre} (${item.cliente.telefono})'),
+              Text('Falla: ${item.orden.fallaReportada}'),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  EstadoPildora(estado: item.orden.estado),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text('Tecnico: $tecnico')),
+                ],
+              ),
+              Text('Fecha: ${_formatearFecha(item.orden.fechaCreacion)}'),
+            ],
+          ),
         ),
         isThreeLine: true,
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
@@ -72,10 +86,10 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen> {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Consultas y Carga del Taller'),
+          title: const Text('Consultas y carga del taller'),
           bottom: const TabBar(
             tabs: [
-              Tab(icon: Icon(Icons.analytics), text: 'Carga y Stock'),
+              Tab(icon: Icon(Icons.analytics), text: 'Carga y stock'),
               Tab(icon: Icon(Icons.history), text: 'Historial'),
             ],
           ),
@@ -85,25 +99,23 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen> {
             ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                const Text(
-                  'Carga de Trabajo por Técnico',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+                const Text('Carga por tecnico',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 cargaAsync.when(
                   loading: () => const CircularProgressIndicator(),
-                  error: (err, _) => Text('Error: $err'),
+                  error: (e, _) => Text('Error: $e'),
                   data: (carga) {
                     if (carga.isEmpty) {
-                      return const Text('No hay órdenes activas asignadas.');
+                      return const Text('No hay ordenes activas.');
                     }
                     return Column(
-                      children: carga.entries.map((entry) {
+                      children: carga.entries.map((e) {
                         return Card(
                           child: ListTile(
-                            title: Text('Técnico: ${entry.key}'),
+                            title: Text('Tecnico: ${e.key}'),
                             trailing: Text(
-                              '${entry.value} órdenes activas',
+                              '${e.value} ordenes activas',
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             ),
                           ),
@@ -113,18 +125,15 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen> {
                   },
                 ),
                 const Divider(height: 32),
-                const Text(
-                  'Alerta: Repuestos con Stock Bajo',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red,
-                  ),
-                ),
+                const Text('Repuestos con stock bajo',
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red)),
                 const SizedBox(height: 8),
                 repuestosStockBajoAsync.when(
                   loading: () => const CircularProgressIndicator(),
-                  error: (err, _) => Text('Error: $err'),
+                  error: (e, _) => Text('Error: $e'),
                   data: (lista) {
                     if (lista.isEmpty) {
                       return const Text('Todo el inventario tiene buen stock.');
@@ -135,13 +144,11 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen> {
                           color: Colors.red.shade50,
                           child: ListTile(
                             title: Text(rep.nombre),
-                            subtitle: Text('Código: ${rep.codigo}'),
+                            subtitle: Text('Codigo: ${rep.codigo}'),
                             trailing: Text(
                               'Stock: ${rep.existencias}',
                               style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.red,
-                              ),
+                                  fontWeight: FontWeight.bold, color: Colors.red),
                             ),
                           ),
                         );
@@ -154,71 +161,67 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen> {
             ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                const Text(
-                  'Historial por Equipo (Serie, Marca o Modelo)',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+                const Text('Historial por equipo (serie, marca o modelo)',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _equipoCtrl,
                   decoration: InputDecoration(
-                    labelText: 'Ej. número de serie, marca o modelo',
+                    labelText: 'Ej. numero de serie, marca o modelo',
                     suffixIcon: IconButton(
                       icon: const Icon(Icons.search),
-                      onPressed: () {
-                        setState(() => _busquedaEquipo = _equipoCtrl.text.trim());
-                      },
+                      onPressed: () => setState(
+                          () => _busquedaEquipo = _equipoCtrl.text.trim()),
                     ),
                   ),
-                  onSubmitted: (val) => setState(() => _busquedaEquipo = val.trim()),
+                  onSubmitted: (v) =>
+                      setState(() => _busquedaEquipo = v.trim()),
                 ),
                 const SizedBox(height: 10),
                 if (_busquedaEquipo.isNotEmpty)
                   ref.watch(historialEquipoProvider(_busquedaEquipo)).when(
                         loading: () => const CircularProgressIndicator(),
-                        error: (err, _) => Text('Error: $err'),
-                        data: (resultados) {
-                          if (resultados.isEmpty) {
-                            return const Text('No se encontraron reparaciones para ese equipo.');
+                        error: (e, _) => Text('Error: $e'),
+                        data: (res) {
+                          if (res.isEmpty) {
+                            return const Text('Sin resultados.');
                           }
                           return Column(
-                            children: resultados
-                                .map((item) => _construirTarjetaHistorial(item, mostrarCliente: false))
+                            children: res
+                                .map((i) => _tarjeta(i, mostrarCliente: false))
                                 .toList(),
                           );
                         },
                       ),
                 const Divider(height: 32),
-                const Text(
-                  'Historial por Cliente (Nombre o Teléfono)',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+                const Text('Historial por cliente (nombre o telefono)',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _clienteCtrl,
                   decoration: InputDecoration(
-                    labelText: 'Ej. nombre o teléfono del cliente',
+                    labelText: 'Ej. nombre o telefono',
                     suffixIcon: IconButton(
                       icon: const Icon(Icons.search),
-                      onPressed: () {
-                        setState(() => _busquedaCliente = _clienteCtrl.text.trim());
-                      },
+                      onPressed: () => setState(
+                          () => _busquedaCliente = _clienteCtrl.text.trim()),
                     ),
                   ),
-                  onSubmitted: (val) => setState(() => _busquedaCliente = val.trim()),
+                  onSubmitted: (v) =>
+                      setState(() => _busquedaCliente = v.trim()),
                 ),
                 const SizedBox(height: 10),
                 if (_busquedaCliente.isNotEmpty)
                   ref.watch(historialClienteProvider(_busquedaCliente)).when(
                         loading: () => const CircularProgressIndicator(),
-                        error: (err, _) => Text('Error: $err'),
-                        data: (resultados) {
-                          if (resultados.isEmpty) {
-                            return const Text('No se encontraron reparaciones para ese cliente.');
+                        error: (e, _) => Text('Error: $e'),
+                        data: (res) {
+                          if (res.isEmpty) {
+                            return const Text('Sin resultados.');
                           }
                           return Column(
-                            children: resultados
-                                .map((item) => _construirTarjetaHistorial(item, mostrarCliente: true))
+                            children: res
+                                .map((i) => _tarjeta(i, mostrarCliente: true))
                                 .toList(),
                           );
                         },

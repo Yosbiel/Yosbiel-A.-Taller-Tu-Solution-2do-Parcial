@@ -3,7 +3,6 @@ import '../data/daos/talleres_dao.dart';
 import '../data/database/app_database.dart';
 import 'talleres_providers.dart';
 
-// Estado completo de una orden en pantalla de detalle.
 class DetalleOrdenState {
   final List<DetallesOrdenTrabajo> trabajos;
   final List<RepuestoUsadoItem> repuestos;
@@ -32,7 +31,6 @@ class DetalleOrdenState {
   }
 }
 
-// ViewModel de detalle de orden. Un family por ordenId.
 final detalleOrdenProvider = AsyncNotifierProvider.autoDispose
     .family<DetalleOrdenViewModel, DetalleOrdenState, OrdenesReparacionData>(
   DetalleOrdenViewModel.new,
@@ -58,25 +56,22 @@ class DetalleOrdenViewModel
     );
   }
 
-  // Guarda estado + tecnico. Lanza excepcion para que la pantalla muestre el error.
-  Future<void> guardarCambios(String nuevoEstado, String tecnico) async {
-    final orden = arg;
+  Future<void> guardarCambios(String nuevoEstado, int? tecnicoId) async {
     final actual = state.valueOrNull;
     if (actual == null) return;
     state = AsyncData(actual.copyWith(guardando: true));
     try {
       final dao = ref.read(talleresDaoProvider);
       await dao.actualizarEstadoYTecnico(
-        orden.id,
+        arg.id,
         nuevoEstado,
-        tecnico: tecnico,
+        tecnicoId: tecnicoId,
       );
     } finally {
       state = AsyncData((state.valueOrNull ?? actual).copyWith(guardando: false));
     }
   }
 
-  // Agrega un trabajo de mano de obra y recarga el estado.
   Future<void> agregarTrabajo(String descripcion, double costo) async {
     final actual = state.valueOrNull;
     if (actual == null) return;
@@ -90,7 +85,6 @@ class DetalleOrdenViewModel
     }
   }
 
-  // Agrega un repuesto del almacen y recarga el estado.
   Future<void> agregarRepuesto(int repuestoId, int cantidad) async {
     final actual = state.valueOrNull;
     if (actual == null) return;
