@@ -23,11 +23,11 @@
 <h2>Requisitos e Instalación</h2>
 
 <h3>Versión de Flutter</h3>
-<p>El proyecto fue desarrollado y compilado con <b>Flutter 3.x</b> (stable).</p>
+<p>El proyecto fue desarrollado y compilado con <b>Flutter estable (3.x)</b>.</p>
 
 <h3>Application ID</h3>
 <p>El identificador de la aplicación es: <br>
-<code>com.example.tusolution</code></p>
+<code>com.yosbielalejandro.diazcala.tusolution</code></p>
 
 <h3>Cómo inicializar y ejecutar el proyecto</h3>
 <ol>
@@ -48,7 +48,7 @@
 <p>El código está organizado manteniendo la separación de responsabilidades de MVVM:</p>
 <ul>
   <li><code>assets/</code>: Recursos estáticos (fuentes Poppins).</li>
-  <li><code>screenshots/</code>: Capturas reales de la app en funcionamiento.</li>
+  <li><code>capturas/</code>: Capturas reales de la app en funcionamiento.</li>
   <li><code>lib/</code>:
     <ul>
       <li><code>data/database/</code>: Configuración de Drift, tablas y migraciones.</li>
@@ -81,7 +81,7 @@
 </ul>
 
 <h2>Capturas de Pantalla</h2>
-<p>Las capturas reales de la aplicación corriendo se encuentran en la carpeta <a href="screenshots/">screenshots/</a>:</p>
+<p>Las capturas reales de la aplicación corriendo se encuentran en la carpeta <a href="capturas/">capturas/</a>:</p>
 <ul>
   <li>Lista de órdenes abiertas con estado y técnico.</li>
   <li>Detalle de orden en reparación con trabajos y repuestos.</li>
