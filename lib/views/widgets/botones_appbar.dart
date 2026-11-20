@@ -58,11 +58,11 @@ class BotonInfo extends StatelessWidget {
                   style: TextStyle(fontSize: 14),
                 ),
                 const SizedBox(height: 16),
-                _fila(Icons.school, 'Ingeniería Informática - 3er año'),
+                _fila(context, Icons.school, 'Ingeniería Informática - 3er año'),
                 const SizedBox(height: 6),
-                _fila(Icons.phone_android, 'Programación para Dispositivos Móviles'),
+                _fila(context, Icons.phone_android, 'Programación para Dispositivos Móviles'),
                 const SizedBox(height: 6),
-                _fila(Icons.code, 'Flutter + Drift + Riverpod'),
+                _fila(context, Icons.code, 'Flutter + Drift + Riverpod'),
                 const SizedBox(height: 12),
                 Center(
                   child: Text(
@@ -87,7 +87,7 @@ class BotonInfo extends StatelessWidget {
     );
   }
 
-  Widget _fila(IconData icono, String texto) {
+  Widget _fila(BuildContext context, IconData icono, String texto) {
     return Row(
       children: [
         Icon(icono, size: 16, color: Theme.of(context).colorScheme.onSurface),
