@@ -299,6 +299,40 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
     );
   }
 
+  // Libera la orden: la deja sin tecnico asignado.
+  Future<void> liberarOrden(int ordenId) async {
+    await (update(db.ordenesReparacion)..where((o) => o.id.equals(ordenId))).write(
+      const OrdenesReparacionCompanion(tecnicoId: Value(null)),
+    );
+  }
+
+  // Reasigna tecnico desde la UI: bloquea solo si esta en_reparacion
+  // y ya tiene otro tecnico. En otros estados permite el cambio.
+  Future<void> reasignarTecnicoUI(int ordenId, int? tecnicoId) async {
+    await transaction(() async {
+      final actual = await (select(db.ordenesReparacion)
+            ..where((o) => o.id.equals(ordenId)))
+          .getSingleOrNull();
+      if (actual == null) {
+        throw StateError('No existe la orden con id $ordenId.');
+      }
+      if (actual.estado == 'en_reparacion' &&
+          actual.tecnicoId != null &&
+          actual.tecnicoId != tecnicoId) {
+        final otro = await (select(db.tecnicos)
+              ..where((t) => t.id.equals(actual.tecnicoId!)))
+            .getSingle();
+        throw StateError(
+          'La orden esta en reparacion y ya la tiene ${otro.nombre}. '
+          'Pidele que la libere antes de reasignarla.',
+        );
+      }
+      await (update(db.ordenesReparacion)..where((o) => o.id.equals(ordenId))).write(
+        OrdenesReparacionCompanion(tecnicoId: Value(tecnicoId)),
+      );
+    });
+  }
+
   // ─── TRABAJOS Y REPUESTOS ───
 
   Future<int> insertarTrabajo(int ordenId, String descripcion, double costo) {

@@ -20,6 +20,24 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
   final _trabajoDescCtrl = TextEditingController();
   final _trabajoCostoCtrl = TextEditingController();
 
+  bool get _esFinal =>
+      _estadoActual == 'entregada' || _estadoActual == 'cancelada';
+
+  bool get _puedeEditarTrabajo => _estadoActual == 'en_reparacion';
+
+  List<String> get _estadosDisponibles {
+    switch (_estadoActual) {
+      case 'recibida':
+        return ['recibida', 'en_reparacion', 'cancelada'];
+      case 'en_reparacion':
+        return ['en_reparacion', 'lista', 'cancelada'];
+      case 'lista':
+        return ['lista', 'entregada', 'cancelada'];
+      default:
+        return [_estadoActual];
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -36,11 +54,51 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
 
   Future<void> _guardar(DetalleOrdenViewModel vm) async {
     try {
+      final dao = ref.read(talleresDaoProvider);
+      if (_tecnicoId != widget.orden.tecnicoId) {
+        await dao.reasignarTecnicoUI(widget.orden.id, _tecnicoId);
+      }
       await vm.guardarCambios(_estadoActual, _tecnicoId);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Orden actualizada')),
       );
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+  }
+
+  Future<void> _liberar() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Liberar orden'),
+        content: const Text('La orden quedara sin tecnico asignado.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Liberar'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      final dao = ref.read(talleresDaoProvider);
+      await dao.liberarOrden(widget.orden.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Orden liberada')),
+      );
+      Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -115,17 +173,31 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
       ),
     );
     if (sel == null || !mounted) return;
+
     final cant = await showDialog<int>(
       context: context,
       builder: (ctx) {
         final ctrl = TextEditingController(text: '1');
+        final formKey = GlobalKey<FormState>();
         return AlertDialog(
           title: Text(sel.nombre),
-          content: TextField(
-            controller: ctrl,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-                labelText: 'Cantidad (max ${sel.existencias})'),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: ctrl,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: 'Cantidad (max ${sel.existencias})',
+              ),
+              validator: (v) {
+                final n = int.tryParse((v ?? '').trim());
+                if (n == null || n <= 0) return 'Cantidad invalida';
+                if (n > sel.existencias) {
+                  return 'Solo hay ${sel.existencias} en stock';
+                }
+                return null;
+              },
+            ),
           ),
           actions: [
             TextButton(
@@ -134,9 +206,8 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
             ),
             ElevatedButton(
               onPressed: () {
-                final n = int.tryParse(ctrl.text.trim());
-                if (n == null || n <= 0 || n > sel.existencias) return;
-                Navigator.pop(ctx, n);
+                if (!formKey.currentState!.validate()) return;
+                Navigator.pop(ctx, int.parse(ctrl.text.trim()));
               },
               child: const Text('Agregar'),
             ),
@@ -163,6 +234,8 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
   Widget build(BuildContext context) {
     final async = ref.watch(detalleOrdenProvider(widget.orden));
     final tecnicosAsync = ref.watch(tecnicosProvider);
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(title: Text('Orden #${widget.orden.id}')),
       body: async.when(
@@ -171,6 +244,13 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
         data: (state) {
           final vm = ref.read(detalleOrdenProvider(widget.orden).notifier);
           final tecnicos = tecnicosAsync.valueOrNull ?? const [];
+          final nombreTecnico = _tecnicoId == null
+              ? 'Sin asignar'
+              : tecnicos
+                      .where((t) => t.id == _tecnicoId)
+                      .map((t) => t.nombre)
+                      .firstOrNull ??
+                  'Sin asignar';
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
@@ -189,78 +269,91 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
               const SizedBox(height: 8),
               Text(
                 'Costo total: \$${state.costoTotal.toStringAsFixed(2)}',
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.green),
+                    color: theme.colorScheme.primary),
               ),
               const Divider(height: 24),
-              DropdownButtonFormField<int?>(
-                value: _tecnicoId,
-                decoration:
-                    const InputDecoration(labelText: 'Tecnico responsable'),
-                items: [
-                  const DropdownMenuItem<int?>(
-                      value: null, child: Text('Sin asignar')),
-                  ...tecnicos.map(
-                    (t) => DropdownMenuItem<int?>(
-                        value: t.id, child: Text(t.nombre)),
-                  ),
-                ],
-                onChanged: (v) => setState(() => _tecnicoId = v),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _estadoActual,
-                decoration: const InputDecoration(labelText: 'Estado'),
-                items: const [
-                  'recibida',
-                  'en_reparacion',
-                  'lista',
-                  'entregada',
-                  'cancelada'
-                ]
-                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                    .toList(),
-                onChanged: (v) {
-                  if (v != null) setState(() => _estadoActual = v);
-                },
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: state.guardando ? null : () => _guardar(vm),
-                child: Text(state.guardando ? 'Guardando...' : 'Guardar'),
-              ),
-              const Divider(height: 32),
-              const Text('Registrar mano de obra',
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 16)),
-              TextField(
-                controller: _trabajoDescCtrl,
-                decoration: const InputDecoration(labelText: 'Descripcion'),
-              ),
-              TextField(
-                controller: _trabajoCostoCtrl,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'Costo'),
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: state.guardando ? null : () => _agregarTrabajo(vm),
-                child: const Text('Agregar trabajo'),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                  foregroundColor: Colors.white,
+              if (_esFinal)
+                Text('Tecnico: $nombreTecnico',
+                    style: const TextStyle(fontSize: 14))
+              else ...[
+                DropdownButtonFormField<int?>(
+                  value: _tecnicoId,
+                  decoration:
+                      const InputDecoration(labelText: 'Tecnico responsable'),
+                  items: [
+                    const DropdownMenuItem<int?>(
+                        value: null, child: Text('Sin asignar')),
+                    ...tecnicos.map(
+                      (t) => DropdownMenuItem<int?>(
+                          value: t.id, child: Text(t.nombre)),
+                    ),
+                  ],
+                  onChanged: (v) => setState(() => _tecnicoId = v),
                 ),
-                onPressed:
-                    state.guardando ? null : () => _agregarRepuesto(vm),
-                icon: const Icon(Icons.build_circle),
-                label: const Text('Anadir repuesto'),
-              ),
+                if (_tecnicoId != null)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: _liberar,
+                      icon: const Icon(Icons.person_off, size: 18),
+                      label: const Text('Liberar orden'),
+                    ),
+                  ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: _estadoActual,
+                  decoration: const InputDecoration(labelText: 'Estado'),
+                  items: _estadosDisponibles
+                      .map((e) =>
+                          DropdownMenuItem(value: e, child: Text(e)))
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) setState(() => _estadoActual = v);
+                  },
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: state.guardando ? null : () => _guardar(vm),
+                  child:
+                      Text(state.guardando ? 'Guardando...' : 'Guardar'),
+                ),
+              ],
+              if (_puedeEditarTrabajo) ...[
+                const Divider(height: 32),
+                const Text('Registrar mano de obra',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 16)),
+                TextField(
+                  controller: _trabajoDescCtrl,
+                  decoration: const InputDecoration(labelText: 'Descripcion'),
+                ),
+                TextField(
+                  controller: _trabajoCostoCtrl,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(labelText: 'Costo'),
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed:
+                      state.guardando ? null : () => _agregarTrabajo(vm),
+                  child: const Text('Agregar trabajo'),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: theme.colorScheme.tertiary,
+                    foregroundColor: theme.colorScheme.onTertiary,
+                  ),
+                  onPressed:
+                      state.guardando ? null : () => _agregarRepuesto(vm),
+                  icon: const Icon(Icons.build_circle),
+                  label: const Text('Anadir repuesto'),
+                ),
+              ],
               const Divider(height: 32),
               const Text('Trabajos',
                   style: TextStyle(
