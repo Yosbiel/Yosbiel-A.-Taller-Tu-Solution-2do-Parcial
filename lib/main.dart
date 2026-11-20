@@ -1,24 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'viewmodels/talleres_providers.dart';
 import 'views/screens/home_navigator.dart';
 
 void main() {
-  // ProviderScope es obligatorio para que Riverpod gestione los estados en toda la aplicación
   runApp(const ProviderScope(child: TuSolutionApp()));
 }
 
-class TuSolutionApp extends StatelessWidget {
+class TuSolutionApp extends ConsumerWidget {
   const TuSolutionApp({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeModeProvider);
+
+    // Tema base con Poppins y Material 3.
+    ThemeData buildTheme(Brightness brightness) {
+      final scheme = ColorScheme.fromSeed(
+        seedColor: Colors.blue,
+        brightness: brightness,
+      );
+      return ThemeData(
+        useMaterial3: true,
+        colorScheme: scheme,
+        fontFamily: 'Poppins',
+        appBarTheme: AppBarTheme(
+          backgroundColor: scheme.primary,
+          foregroundColor: scheme.onPrimary,
+        ),
+      );
+    }
+
     return MaterialApp(
       title: 'Tu Solution',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        useMaterial3: true,
-      ),
-      // Iniciamos con el navegador inferior que unifica Órdenes, Inventario y Consultas
+      theme: buildTheme(Brightness.light),
+      darkTheme: buildTheme(Brightness.dark),
+      themeMode: themeMode,
       home: const HomeNavigator(),
       debugShowCheckedModeBanner: false,
     );
