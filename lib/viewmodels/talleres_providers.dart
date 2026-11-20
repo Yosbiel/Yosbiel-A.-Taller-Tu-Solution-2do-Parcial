@@ -98,5 +98,5 @@ final themeModeProvider =
 final historialCompletoProvider =
     FutureProvider.autoDispose<List<HistorialOrdenItem>>((ref) async {
   final dao = ref.watch(talleresDaoProvider);
-  return await dao.obtenerHistorialCompleto();
+  return await dao.buscarHistorialPorEquipo('%');
 });
