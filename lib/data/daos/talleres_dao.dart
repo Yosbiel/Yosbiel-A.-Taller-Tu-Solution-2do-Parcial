@@ -362,7 +362,7 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
         .toList();
   }
 
-  Future> obtenerCargaTrabajoPorTecnico() async {
+  Future<Map<String, int>> obtenerCargaTrabajoPorTecnico() async {
     final ordenes = await (select(db.ordenesReparacion)
           ..where((t) => t.estado.isNotIn(['entregada', 'cancelada'])))
         .get();
