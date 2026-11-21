@@ -70,14 +70,6 @@ class OrdenesScreen extends ConsumerWidget {
         },
         child: const Icon(Icons.add),
       ),
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const NuevaOrdenScreen()),
-          );
-        },
-        child: const Icon(Icons.add),
-      ),
     );
   }
 }
