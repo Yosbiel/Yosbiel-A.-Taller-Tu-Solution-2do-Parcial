@@ -70,7 +70,7 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
           Navigator.push(
             context,
             RutaDeslizante(
-              page: DetalleOrdenScreen(orden: item.orden),
+              page: DetalleOrdenScreen(orden: orden),
             ),
           );
         },
