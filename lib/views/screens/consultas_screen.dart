@@ -22,7 +22,7 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
   String _busqueda = '';
   Timer? _debounce;
 
-  // Nuevo estado para el toggle Equipo/Cliente
+  // Estado para saber si estamos buscando por Equipo (false) o por Cliente (true)
   bool _buscarPorCliente = false;
 
   @override
@@ -39,6 +39,7 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
     super.dispose();
   }
 
+  // Aplicamos un retardo de 300ms para no consultar la BD en cada tecla que se presiona
   void _onBuscar(String v) {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
@@ -98,6 +99,7 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Escuchamos los providers de carga y stock bajo
     final cargaAsync = ref.watch(cargaTrabajoProvider);
     final repuestosStockBajoAsync = ref.watch(repuestosStockBajoProvider);
     final theme = Theme.of(context);
@@ -166,7 +168,7 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
               // --- PESTAÑA 2: HISTORIAL ---
               Column(
                 children: [
-                  // Toggle Equipo / Cliente
+                  // Selector (Toggle) para buscar por Equipo o por Cliente
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                     child: SegmentedButton<bool>(
@@ -178,13 +180,13 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
                       onSelectionChanged: (Set<bool> newSelection) {
                         setState(() {
                           _buscarPorCliente = newSelection.first;
-                          _busqueda = ''; // Limpiar búsqueda al cambiar
+                          _busqueda = ''; // Limpiamos la búsqueda al cambiar de modo
                           _busquedaCtrl.clear();
                         });
                       },
                     ),
                   ),
-                  // Buscador dinámico
+                  // Buscador dinámico: cambia el texto según el toggle
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: TextField(
@@ -202,7 +204,7 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
                   const SizedBox(height: 8),
                   Expanded(
                     child: _busqueda.isEmpty
-                        // Si no hay búsqueda, mostramos TODO el historial (con datos de cliente)
+                        // Si no hay búsqueda, mostramos todo el historial completo
                         ? ref.watch(historialCompletoProvider).when(
                             loading: () => const Center(child: CircularProgressIndicator()),
                             error: (e, _) => Center(child: Text('Error: $e')),
