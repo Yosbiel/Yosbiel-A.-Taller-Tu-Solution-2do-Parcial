@@ -42,7 +42,7 @@ class _HomeNavigatorState extends State<HomeNavigator> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _indiceActual,
         onTap: (i) => setState(() => _indiceActual = i),
-        items: const [
+        items: [
           BottomNavigationBarItem(
             icon: IconoRebote(icon: Icons.list_alt, isSelected: _indiceActual == 0),
             label: 'Órdenes',
