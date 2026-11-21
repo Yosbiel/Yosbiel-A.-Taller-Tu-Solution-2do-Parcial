@@ -426,27 +426,37 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
 
   // ─── CARGA POR TÉCNICO ───
 
+  // Calcula la carga de trabajo agrupando por el nombre del técnico.
+  // Usamos un JOIN para no mostrar el ID, sino el nombre real.
   Future<Map<String, int>> obtenerCargaTrabajoPorTecnico() async {
-    final tecnicoCol = db.ordenesReparacion.tecnicoId;
-    final countExpr = db.ordenesReparacion.id.count();
+    final query = select(db.ordenesReparacion).join([
+      leftOuterJoin(db.tecnicos, db.tecnicos.id.equalsExp(db.ordenesReparacion.tecnicoId)),
+    ])..where(db.ordenesReparacion.estado.isNotIn(['entregada', 'cancelada']));
 
-    final query = selectOnly(db.ordenesReparacion)
-      ..addColumns([tecnicoCol, countExpr])
-      ..where(db.ordenesReparacion.estado.isNotIn(['entregada', 'cancelada']))
-      ..groupBy([tecnicoCol]);
-
-    return _mapearCargaTrabajo(await query.get());
+    final rows = await query.get();
+    final carga = <String, int>{};
+    for (final row in rows) {
+      final tecnico = row.readTableOrNull(db.tecnicos);
+      final nombre = tecnico?.nombre ?? 'Sin asignar';
+      carga[nombre] = (carga[nombre] ?? 0) + 1;
+    }
+    return carga;
   }
 
+  // Versión reactiva de la carga de trabajo por técnico.
   Stream<Map<String, int>> watchCargaTrabajoPorTecnico() {
-    final tecnicoCol = db.ordenesReparacion.tecnicoId;
-    final countExpr = db.ordenesReparacion.id.count();
+    final query = select(db.ordenesReparacion).join([
+      leftOuterJoin(db.tecnicos, db.tecnicos.id.equalsExp(db.ordenesReparacion.tecnicoId)),
+    ])..where(db.ordenesReparacion.estado.isNotIn(['entregada', 'cancelada']));
 
-    final query = selectOnly(db.ordenesReparacion)
-      ..addColumns([tecnicoCol, countExpr])
-      ..where(db.ordenesReparacion.estado.isNotIn(['entregada', 'cancelada']))
-      ..groupBy([tecnicoCol]);
-
-    return query.watch().map(_mapearCargaTrabajo);
+    return query.watch().map((rows) {
+      final carga = <String, int>{};
+      for (final row in rows) {
+        final tecnico = row.readTableOrNull(db.tecnicos);
+        final nombre = tecnico?.nombre ?? 'Sin asignar';
+        carga[nombre] = (carga[nombre] ?? 0) + 1;
+      }
+      return carga;
+    });
   }
 }
