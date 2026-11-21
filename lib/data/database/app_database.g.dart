@@ -217,6 +217,187 @@ class ClientesCompanion extends UpdateCompanion<Cliente> {
   }
 }
 
+class $TecnicosTable extends Tecnicos
+    with TableInfo<$TecnicosTable, TecnicosData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TecnicosTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _nombreMeta = const VerificationMeta('nombre');
+  @override
+  late final GeneratedColumn<String> nombre = GeneratedColumn<String>(
+      'nombre', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'));
+  @override
+  List<GeneratedColumn> get $columns => [id, nombre];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'tecnicos';
+  @override
+  VerificationContext validateIntegrity(Insertable<TecnicosData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('nombre')) {
+      context.handle(_nombreMeta,
+          nombre.isAcceptableOrUnknown(data['nombre']!, _nombreMeta));
+    } else if (isInserting) {
+      context.missing(_nombreMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  TecnicosData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TecnicosData(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      nombre: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}nombre'])!,
+    );
+  }
+
+  @override
+  $TecnicosTable createAlias(String alias) {
+    return $TecnicosTable(attachedDatabase, alias);
+  }
+}
+
+class TecnicosData extends DataClass implements Insertable<TecnicosData> {
+  final int id;
+  final String nombre;
+  const TecnicosData({required this.id, required this.nombre});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['nombre'] = Variable<String>(nombre);
+    return map;
+  }
+
+  TecnicosCompanion toCompanion(bool nullToAbsent) {
+    return TecnicosCompanion(
+      id: Value(id),
+      nombre: Value(nombre),
+    );
+  }
+
+  factory TecnicosData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TecnicosData(
+      id: serializer.fromJson<int>(json['id']),
+      nombre: serializer.fromJson<String>(json['nombre']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'nombre': serializer.toJson<String>(nombre),
+    };
+  }
+
+  TecnicosData copyWith({int? id, String? nombre}) => TecnicosData(
+        id: id ?? this.id,
+        nombre: nombre ?? this.nombre,
+      );
+  TecnicosData copyWithCompanion(TecnicosCompanion data) {
+    return TecnicosData(
+      id: data.id.present ? data.id.value : this.id,
+      nombre: data.nombre.present ? data.nombre.value : this.nombre,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TecnicosData(')
+          ..write('id: $id, ')
+          ..write('nombre: $nombre')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, nombre);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TecnicosData &&
+          other.id == this.id &&
+          other.nombre == this.nombre);
+}
+
+class TecnicosCompanion extends UpdateCompanion<TecnicosData> {
+  final Value<int> id;
+  final Value<String> nombre;
+  const TecnicosCompanion({
+    this.id = const Value.absent(),
+    this.nombre = const Value.absent(),
+  });
+  TecnicosCompanion.insert({
+    this.id = const Value.absent(),
+    required String nombre,
+  }) : nombre = Value(nombre);
+  static Insertable<TecnicosData> custom({
+    Expression<int>? id,
+    Expression<String>? nombre,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (nombre != null) 'nombre': nombre,
+    });
+  }
+
+  TecnicosCompanion copyWith({Value<int>? id, Value<String>? nombre}) {
+    return TecnicosCompanion(
+      id: id ?? this.id,
+      nombre: nombre ?? this.nombre,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (nombre.present) {
+      map['nombre'] = Variable<String>(nombre.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TecnicosCompanion(')
+          ..write('id: $id, ')
+          ..write('nombre: $nombre')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $EquiposTable extends Equipos with TableInfo<$EquiposTable, Equipo> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -892,12 +1073,15 @@ class $OrdenesReparacionTable extends OrdenesReparacion
   late final GeneratedColumn<String> estado = GeneratedColumn<String>(
       'estado', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _tecnicoAsignadoMeta =
-      const VerificationMeta('tecnicoAsignado');
+  static const VerificationMeta _tecnicoIdMeta =
+      const VerificationMeta('tecnicoId');
   @override
-  late final GeneratedColumn<String> tecnicoAsignado = GeneratedColumn<String>(
-      'tecnico_asignado', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
+  late final GeneratedColumn<int> tecnicoId = GeneratedColumn<int>(
+      'tecnico_id', aliasedName, true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES tecnicos (id)'));
   static const VerificationMeta _fechaCreacionMeta =
       const VerificationMeta('fechaCreacion');
   @override
@@ -906,7 +1090,7 @@ class $OrdenesReparacionTable extends OrdenesReparacion
           type: DriftSqlType.dateTime, requiredDuringInsert: true);
   @override
   List<GeneratedColumn> get $columns =>
-      [id, equipoId, fallaReportada, estado, tecnicoAsignado, fechaCreacion];
+      [id, equipoId, fallaReportada, estado, tecnicoId, fechaCreacion];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -941,11 +1125,9 @@ class $OrdenesReparacionTable extends OrdenesReparacion
     } else if (isInserting) {
       context.missing(_estadoMeta);
     }
-    if (data.containsKey('tecnico_asignado')) {
-      context.handle(
-          _tecnicoAsignadoMeta,
-          tecnicoAsignado.isAcceptableOrUnknown(
-              data['tecnico_asignado']!, _tecnicoAsignadoMeta));
+    if (data.containsKey('tecnico_id')) {
+      context.handle(_tecnicoIdMeta,
+          tecnicoId.isAcceptableOrUnknown(data['tecnico_id']!, _tecnicoIdMeta));
     }
     if (data.containsKey('fecha_creacion')) {
       context.handle(
@@ -972,8 +1154,8 @@ class $OrdenesReparacionTable extends OrdenesReparacion
           DriftSqlType.string, data['${effectivePrefix}falla_reportada'])!,
       estado: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}estado'])!,
-      tecnicoAsignado: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}tecnico_asignado']),
+      tecnicoId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}tecnico_id']),
       fechaCreacion: attachedDatabase.typeMapping.read(
           DriftSqlType.dateTime, data['${effectivePrefix}fecha_creacion'])!,
     );
@@ -991,14 +1173,14 @@ class OrdenesReparacionData extends DataClass
   final int equipoId;
   final String fallaReportada;
   final String estado;
-  final String? tecnicoAsignado;
+  final int? tecnicoId;
   final DateTime fechaCreacion;
   const OrdenesReparacionData(
       {required this.id,
       required this.equipoId,
       required this.fallaReportada,
       required this.estado,
-      this.tecnicoAsignado,
+      this.tecnicoId,
       required this.fechaCreacion});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1007,8 +1189,8 @@ class OrdenesReparacionData extends DataClass
     map['equipo_id'] = Variable<int>(equipoId);
     map['falla_reportada'] = Variable<String>(fallaReportada);
     map['estado'] = Variable<String>(estado);
-    if (!nullToAbsent || tecnicoAsignado != null) {
-      map['tecnico_asignado'] = Variable<String>(tecnicoAsignado);
+    if (!nullToAbsent || tecnicoId != null) {
+      map['tecnico_id'] = Variable<int>(tecnicoId);
     }
     map['fecha_creacion'] = Variable<DateTime>(fechaCreacion);
     return map;
@@ -1020,9 +1202,9 @@ class OrdenesReparacionData extends DataClass
       equipoId: Value(equipoId),
       fallaReportada: Value(fallaReportada),
       estado: Value(estado),
-      tecnicoAsignado: tecnicoAsignado == null && nullToAbsent
+      tecnicoId: tecnicoId == null && nullToAbsent
           ? const Value.absent()
-          : Value(tecnicoAsignado),
+          : Value(tecnicoId),
       fechaCreacion: Value(fechaCreacion),
     );
   }
@@ -1035,7 +1217,7 @@ class OrdenesReparacionData extends DataClass
       equipoId: serializer.fromJson<int>(json['equipoId']),
       fallaReportada: serializer.fromJson<String>(json['fallaReportada']),
       estado: serializer.fromJson<String>(json['estado']),
-      tecnicoAsignado: serializer.fromJson<String?>(json['tecnicoAsignado']),
+      tecnicoId: serializer.fromJson<int?>(json['tecnicoId']),
       fechaCreacion: serializer.fromJson<DateTime>(json['fechaCreacion']),
     );
   }
@@ -1047,7 +1229,7 @@ class OrdenesReparacionData extends DataClass
       'equipoId': serializer.toJson<int>(equipoId),
       'fallaReportada': serializer.toJson<String>(fallaReportada),
       'estado': serializer.toJson<String>(estado),
-      'tecnicoAsignado': serializer.toJson<String?>(tecnicoAsignado),
+      'tecnicoId': serializer.toJson<int?>(tecnicoId),
       'fechaCreacion': serializer.toJson<DateTime>(fechaCreacion),
     };
   }
@@ -1057,16 +1239,14 @@ class OrdenesReparacionData extends DataClass
           int? equipoId,
           String? fallaReportada,
           String? estado,
-          Value<String?> tecnicoAsignado = const Value.absent(),
+          Value<int?> tecnicoId = const Value.absent(),
           DateTime? fechaCreacion}) =>
       OrdenesReparacionData(
         id: id ?? this.id,
         equipoId: equipoId ?? this.equipoId,
         fallaReportada: fallaReportada ?? this.fallaReportada,
         estado: estado ?? this.estado,
-        tecnicoAsignado: tecnicoAsignado.present
-            ? tecnicoAsignado.value
-            : this.tecnicoAsignado,
+        tecnicoId: tecnicoId.present ? tecnicoId.value : this.tecnicoId,
         fechaCreacion: fechaCreacion ?? this.fechaCreacion,
       );
   OrdenesReparacionData copyWithCompanion(OrdenesReparacionCompanion data) {
@@ -1077,9 +1257,7 @@ class OrdenesReparacionData extends DataClass
           ? data.fallaReportada.value
           : this.fallaReportada,
       estado: data.estado.present ? data.estado.value : this.estado,
-      tecnicoAsignado: data.tecnicoAsignado.present
-          ? data.tecnicoAsignado.value
-          : this.tecnicoAsignado,
+      tecnicoId: data.tecnicoId.present ? data.tecnicoId.value : this.tecnicoId,
       fechaCreacion: data.fechaCreacion.present
           ? data.fechaCreacion.value
           : this.fechaCreacion,
@@ -1093,7 +1271,7 @@ class OrdenesReparacionData extends DataClass
           ..write('equipoId: $equipoId, ')
           ..write('fallaReportada: $fallaReportada, ')
           ..write('estado: $estado, ')
-          ..write('tecnicoAsignado: $tecnicoAsignado, ')
+          ..write('tecnicoId: $tecnicoId, ')
           ..write('fechaCreacion: $fechaCreacion')
           ..write(')'))
         .toString();
@@ -1101,7 +1279,7 @@ class OrdenesReparacionData extends DataClass
 
   @override
   int get hashCode => Object.hash(
-      id, equipoId, fallaReportada, estado, tecnicoAsignado, fechaCreacion);
+      id, equipoId, fallaReportada, estado, tecnicoId, fechaCreacion);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1110,7 +1288,7 @@ class OrdenesReparacionData extends DataClass
           other.equipoId == this.equipoId &&
           other.fallaReportada == this.fallaReportada &&
           other.estado == this.estado &&
-          other.tecnicoAsignado == this.tecnicoAsignado &&
+          other.tecnicoId == this.tecnicoId &&
           other.fechaCreacion == this.fechaCreacion);
 }
 
@@ -1120,14 +1298,14 @@ class OrdenesReparacionCompanion
   final Value<int> equipoId;
   final Value<String> fallaReportada;
   final Value<String> estado;
-  final Value<String?> tecnicoAsignado;
+  final Value<int?> tecnicoId;
   final Value<DateTime> fechaCreacion;
   const OrdenesReparacionCompanion({
     this.id = const Value.absent(),
     this.equipoId = const Value.absent(),
     this.fallaReportada = const Value.absent(),
     this.estado = const Value.absent(),
-    this.tecnicoAsignado = const Value.absent(),
+    this.tecnicoId = const Value.absent(),
     this.fechaCreacion = const Value.absent(),
   });
   OrdenesReparacionCompanion.insert({
@@ -1135,7 +1313,7 @@ class OrdenesReparacionCompanion
     required int equipoId,
     required String fallaReportada,
     required String estado,
-    this.tecnicoAsignado = const Value.absent(),
+    this.tecnicoId = const Value.absent(),
     required DateTime fechaCreacion,
   })  : equipoId = Value(equipoId),
         fallaReportada = Value(fallaReportada),
@@ -1146,7 +1324,7 @@ class OrdenesReparacionCompanion
     Expression<int>? equipoId,
     Expression<String>? fallaReportada,
     Expression<String>? estado,
-    Expression<String>? tecnicoAsignado,
+    Expression<int>? tecnicoId,
     Expression<DateTime>? fechaCreacion,
   }) {
     return RawValuesInsertable({
@@ -1154,7 +1332,7 @@ class OrdenesReparacionCompanion
       if (equipoId != null) 'equipo_id': equipoId,
       if (fallaReportada != null) 'falla_reportada': fallaReportada,
       if (estado != null) 'estado': estado,
-      if (tecnicoAsignado != null) 'tecnico_asignado': tecnicoAsignado,
+      if (tecnicoId != null) 'tecnico_id': tecnicoId,
       if (fechaCreacion != null) 'fecha_creacion': fechaCreacion,
     });
   }
@@ -1164,14 +1342,14 @@ class OrdenesReparacionCompanion
       Value<int>? equipoId,
       Value<String>? fallaReportada,
       Value<String>? estado,
-      Value<String?>? tecnicoAsignado,
+      Value<int?>? tecnicoId,
       Value<DateTime>? fechaCreacion}) {
     return OrdenesReparacionCompanion(
       id: id ?? this.id,
       equipoId: equipoId ?? this.equipoId,
       fallaReportada: fallaReportada ?? this.fallaReportada,
       estado: estado ?? this.estado,
-      tecnicoAsignado: tecnicoAsignado ?? this.tecnicoAsignado,
+      tecnicoId: tecnicoId ?? this.tecnicoId,
       fechaCreacion: fechaCreacion ?? this.fechaCreacion,
     );
   }
@@ -1191,8 +1369,8 @@ class OrdenesReparacionCompanion
     if (estado.present) {
       map['estado'] = Variable<String>(estado.value);
     }
-    if (tecnicoAsignado.present) {
-      map['tecnico_asignado'] = Variable<String>(tecnicoAsignado.value);
+    if (tecnicoId.present) {
+      map['tecnico_id'] = Variable<int>(tecnicoId.value);
     }
     if (fechaCreacion.present) {
       map['fecha_creacion'] = Variable<DateTime>(fechaCreacion.value);
@@ -1207,7 +1385,7 @@ class OrdenesReparacionCompanion
           ..write('equipoId: $equipoId, ')
           ..write('fallaReportada: $fallaReportada, ')
           ..write('estado: $estado, ')
-          ..write('tecnicoAsignado: $tecnicoAsignado, ')
+          ..write('tecnicoId: $tecnicoId, ')
           ..write('fechaCreacion: $fechaCreacion')
           ..write(')'))
         .toString();
@@ -1810,6 +1988,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $ClientesTable clientes = $ClientesTable(this);
+  late final $TecnicosTable tecnicos = $TecnicosTable(this);
   late final $EquiposTable equipos = $EquiposTable(this);
   late final $RepuestosTable repuestos = $RepuestosTable(this);
   late final $OrdenesReparacionTable ordenesReparacion =
@@ -1825,6 +2004,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
         clientes,
+        tecnicos,
         equipos,
         repuestos,
         ordenesReparacion,
@@ -2081,6 +2261,215 @@ typedef $$ClientesTableProcessedTableManager = ProcessedTableManager<
     (Cliente, $$ClientesTableReferences),
     Cliente,
     PrefetchHooks Function({bool equiposRefs})>;
+typedef $$TecnicosTableCreateCompanionBuilder = TecnicosCompanion Function({
+  Value<int> id,
+  required String nombre,
+});
+typedef $$TecnicosTableUpdateCompanionBuilder = TecnicosCompanion Function({
+  Value<int> id,
+  Value<String> nombre,
+});
+
+final class $$TecnicosTableReferences
+    extends BaseReferences<_$AppDatabase, $TecnicosTable, TecnicosData> {
+  $$TecnicosTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$OrdenesReparacionTable,
+      List<OrdenesReparacionData>> _ordenesReparacionRefsTable(
+          _$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(db.ordenesReparacion,
+          aliasName: 'tecnicos__id__ordenes_reparacion__tecnico_id');
+
+  $$OrdenesReparacionTableProcessedTableManager get ordenesReparacionRefs {
+    final manager =
+        $$OrdenesReparacionTableTableManager($_db, $_db.ordenesReparacion)
+            .filter((f) => f.tecnicoId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache =
+        $_typedResult.readTableOrNull(_ordenesReparacionRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+}
+
+class $$TecnicosTableFilterComposer
+    extends Composer<_$AppDatabase, $TecnicosTable> {
+  $$TecnicosTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get nombre => $composableBuilder(
+      column: $table.nombre, builder: (column) => ColumnFilters(column));
+
+  Expression<bool> ordenesReparacionRefs(
+      Expression<bool> Function($$OrdenesReparacionTableFilterComposer f) f) {
+    final $$OrdenesReparacionTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.ordenesReparacion,
+        getReferencedColumn: (t) => t.tecnicoId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$OrdenesReparacionTableFilterComposer(
+              $db: $db,
+              $table: $db.ordenesReparacion,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
+class $$TecnicosTableOrderingComposer
+    extends Composer<_$AppDatabase, $TecnicosTable> {
+  $$TecnicosTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get nombre => $composableBuilder(
+      column: $table.nombre, builder: (column) => ColumnOrderings(column));
+}
+
+class $$TecnicosTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TecnicosTable> {
+  $$TecnicosTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get nombre =>
+      $composableBuilder(column: $table.nombre, builder: (column) => column);
+
+  Expression<T> ordenesReparacionRefs<T extends Object>(
+      Expression<T> Function($$OrdenesReparacionTableAnnotationComposer a) f) {
+    final $$OrdenesReparacionTableAnnotationComposer composer =
+        $composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $db.ordenesReparacion,
+            getReferencedColumn: (t) => t.tecnicoId,
+            builder: (joinBuilder,
+                    {$addJoinBuilderToRootComposer,
+                    $removeJoinBuilderFromRootComposer}) =>
+                $$OrdenesReparacionTableAnnotationComposer(
+                  $db: $db,
+                  $table: $db.ordenesReparacion,
+                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                  joinBuilder: joinBuilder,
+                  $removeJoinBuilderFromRootComposer:
+                      $removeJoinBuilderFromRootComposer,
+                ));
+    return f(composer);
+  }
+}
+
+class $$TecnicosTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $TecnicosTable,
+    TecnicosData,
+    $$TecnicosTableFilterComposer,
+    $$TecnicosTableOrderingComposer,
+    $$TecnicosTableAnnotationComposer,
+    $$TecnicosTableCreateCompanionBuilder,
+    $$TecnicosTableUpdateCompanionBuilder,
+    (TecnicosData, $$TecnicosTableReferences),
+    TecnicosData,
+    PrefetchHooks Function({bool ordenesReparacionRefs})> {
+  $$TecnicosTableTableManager(_$AppDatabase db, $TecnicosTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TecnicosTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TecnicosTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TecnicosTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> nombre = const Value.absent(),
+          }) =>
+              TecnicosCompanion(
+            id: id,
+            nombre: nombre,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String nombre,
+          }) =>
+              TecnicosCompanion.insert(
+            id: id,
+            nombre: nombre,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable<$TecnicosTable, TecnicosData>(table),
+                    $$TecnicosTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({ordenesReparacionRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (ordenesReparacionRefs) db.ordenesReparacion
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (ordenesReparacionRefs)
+                    await $_getPrefetchedDataByColumns<
+                            TecnicosData,
+                            $TecnicosTable,
+                            OrdenesReparacionData,
+                            $OrdenesReparacionTable>(
+                        currentTable: table,
+                        referencedTable: $$TecnicosTableReferences
+                            ._ordenesReparacionRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$TecnicosTableReferences(db, table, p0)
+                                .ordenesReparacionRefs,
+                        currentColumn: 'id',
+                        referencedColumn: 'tecnico_id',
+                        typedResults: items)
+                ];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$TecnicosTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $TecnicosTable,
+    TecnicosData,
+    $$TecnicosTableFilterComposer,
+    $$TecnicosTableOrderingComposer,
+    $$TecnicosTableAnnotationComposer,
+    $$TecnicosTableCreateCompanionBuilder,
+    $$TecnicosTableUpdateCompanionBuilder,
+    (TecnicosData, $$TecnicosTableReferences),
+    TecnicosData,
+    PrefetchHooks Function({bool ordenesReparacionRefs})>;
 typedef $$EquiposTableCreateCompanionBuilder = EquiposCompanion Function({
   Value<int> id,
   required int clienteId,
@@ -2702,7 +3091,7 @@ typedef $$OrdenesReparacionTableCreateCompanionBuilder
   required int equipoId,
   required String fallaReportada,
   required String estado,
-  Value<String?> tecnicoAsignado,
+  Value<int?> tecnicoId,
   required DateTime fechaCreacion,
 });
 typedef $$OrdenesReparacionTableUpdateCompanionBuilder
@@ -2711,7 +3100,7 @@ typedef $$OrdenesReparacionTableUpdateCompanionBuilder
   Value<int> equipoId,
   Value<String> fallaReportada,
   Value<String> estado,
-  Value<String?> tecnicoAsignado,
+  Value<int?> tecnicoId,
   Value<DateTime> fechaCreacion,
 });
 
@@ -2729,6 +3118,20 @@ final class $$OrdenesReparacionTableReferences extends BaseReferences<
     final manager = $$EquiposTableTableManager($_db, $_db.equipos)
         .filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_equipoIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static $TecnicosTable _tecnicoIdTable(_$AppDatabase db) =>
+      db.tecnicos.createAlias('ordenes_reparacion__tecnico_id__tecnicos__id');
+
+  $$TecnicosTableProcessedTableManager? get tecnicoId {
+    final $_column = $_itemColumn<int>('tecnico_id');
+    if ($_column == null) return null;
+    final manager = $$TecnicosTableTableManager($_db, $_db.tecnicos)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_tecnicoIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: [item]));
@@ -2792,10 +3195,6 @@ class $$OrdenesReparacionTableFilterComposer
   ColumnFilters<String> get estado => $composableBuilder(
       column: $table.estado, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get tecnicoAsignado => $composableBuilder(
-      column: $table.tecnicoAsignado,
-      builder: (column) => ColumnFilters(column));
-
   ColumnFilters<DateTime> get fechaCreacion => $composableBuilder(
       column: $table.fechaCreacion, builder: (column) => ColumnFilters(column));
 
@@ -2811,6 +3210,26 @@ class $$OrdenesReparacionTableFilterComposer
             $$EquiposTableFilterComposer(
               $db: $db,
               $table: $db.equipos,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$TecnicosTableFilterComposer get tecnicoId {
+    final $$TecnicosTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.tecnicoId,
+        referencedTable: $db.tecnicos,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$TecnicosTableFilterComposer(
+              $db: $db,
+              $table: $db.tecnicos,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -2885,10 +3304,6 @@ class $$OrdenesReparacionTableOrderingComposer
   ColumnOrderings<String> get estado => $composableBuilder(
       column: $table.estado, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get tecnicoAsignado => $composableBuilder(
-      column: $table.tecnicoAsignado,
-      builder: (column) => ColumnOrderings(column));
-
   ColumnOrderings<DateTime> get fechaCreacion => $composableBuilder(
       column: $table.fechaCreacion,
       builder: (column) => ColumnOrderings(column));
@@ -2905,6 +3320,26 @@ class $$OrdenesReparacionTableOrderingComposer
             $$EquiposTableOrderingComposer(
               $db: $db,
               $table: $db.equipos,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$TecnicosTableOrderingComposer get tecnicoId {
+    final $$TecnicosTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.tecnicoId,
+        referencedTable: $db.tecnicos,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$TecnicosTableOrderingComposer(
+              $db: $db,
+              $table: $db.tecnicos,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -2932,9 +3367,6 @@ class $$OrdenesReparacionTableAnnotationComposer
   GeneratedColumn<String> get estado =>
       $composableBuilder(column: $table.estado, builder: (column) => column);
 
-  GeneratedColumn<String> get tecnicoAsignado => $composableBuilder(
-      column: $table.tecnicoAsignado, builder: (column) => column);
-
   GeneratedColumn<DateTime> get fechaCreacion => $composableBuilder(
       column: $table.fechaCreacion, builder: (column) => column);
 
@@ -2950,6 +3382,26 @@ class $$OrdenesReparacionTableAnnotationComposer
             $$EquiposTableAnnotationComposer(
               $db: $db,
               $table: $db.equipos,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$TecnicosTableAnnotationComposer get tecnicoId {
+    final $$TecnicosTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.tecnicoId,
+        referencedTable: $db.tecnicos,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$TecnicosTableAnnotationComposer(
+              $db: $db,
+              $table: $db.tecnicos,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -3018,6 +3470,7 @@ class $$OrdenesReparacionTableTableManager extends RootTableManager<
     OrdenesReparacionData,
     PrefetchHooks Function(
         {bool equipoId,
+        bool tecnicoId,
         bool detallesOrdenTrabajosRefs,
         bool detallesOrdenRepuestosRefs})> {
   $$OrdenesReparacionTableTableManager(
@@ -3037,7 +3490,7 @@ class $$OrdenesReparacionTableTableManager extends RootTableManager<
             Value<int> equipoId = const Value.absent(),
             Value<String> fallaReportada = const Value.absent(),
             Value<String> estado = const Value.absent(),
-            Value<String?> tecnicoAsignado = const Value.absent(),
+            Value<int?> tecnicoId = const Value.absent(),
             Value<DateTime> fechaCreacion = const Value.absent(),
           }) =>
               OrdenesReparacionCompanion(
@@ -3045,7 +3498,7 @@ class $$OrdenesReparacionTableTableManager extends RootTableManager<
             equipoId: equipoId,
             fallaReportada: fallaReportada,
             estado: estado,
-            tecnicoAsignado: tecnicoAsignado,
+            tecnicoId: tecnicoId,
             fechaCreacion: fechaCreacion,
           ),
           createCompanionCallback: ({
@@ -3053,7 +3506,7 @@ class $$OrdenesReparacionTableTableManager extends RootTableManager<
             required int equipoId,
             required String fallaReportada,
             required String estado,
-            Value<String?> tecnicoAsignado = const Value.absent(),
+            Value<int?> tecnicoId = const Value.absent(),
             required DateTime fechaCreacion,
           }) =>
               OrdenesReparacionCompanion.insert(
@@ -3061,7 +3514,7 @@ class $$OrdenesReparacionTableTableManager extends RootTableManager<
             equipoId: equipoId,
             fallaReportada: fallaReportada,
             estado: estado,
-            tecnicoAsignado: tecnicoAsignado,
+            tecnicoId: tecnicoId,
             fechaCreacion: fechaCreacion,
           ),
           withReferenceMapper: (p0) => p0
@@ -3073,6 +3526,7 @@ class $$OrdenesReparacionTableTableManager extends RootTableManager<
               .toList(),
           prefetchHooksCallback: (
               {equipoId = false,
+              tecnicoId = false,
               detallesOrdenTrabajosRefs = false,
               detallesOrdenRepuestosRefs = false}) {
             return PrefetchHooks(
@@ -3102,6 +3556,17 @@ class $$OrdenesReparacionTableTableManager extends RootTableManager<
                         $$OrdenesReparacionTableReferences._equipoIdTable(db),
                     referencedColumn: $$OrdenesReparacionTableReferences
                         ._equipoIdTable(db)
+                        .id,
+                  ) as T;
+                }
+                if (tecnicoId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.tecnicoId,
+                    referencedTable:
+                        $$OrdenesReparacionTableReferences._tecnicoIdTable(db),
+                    referencedColumn: $$OrdenesReparacionTableReferences
+                        ._tecnicoIdTable(db)
                         .id,
                   ) as T;
                 }
@@ -3160,6 +3625,7 @@ typedef $$OrdenesReparacionTableProcessedTableManager = ProcessedTableManager<
     OrdenesReparacionData,
     PrefetchHooks Function(
         {bool equipoId,
+        bool tecnicoId,
         bool detallesOrdenTrabajosRefs,
         bool detallesOrdenRepuestosRefs})>;
 typedef $$DetallesOrdenTrabajosTableCreateCompanionBuilder
@@ -3791,6 +4257,8 @@ class $AppDatabaseManager {
   $AppDatabaseManager(this._db);
   $$ClientesTableTableManager get clientes =>
       $$ClientesTableTableManager(_db, _db.clientes);
+  $$TecnicosTableTableManager get tecnicos =>
+      $$TecnicosTableTableManager(_db, _db.tecnicos);
   $$EquiposTableTableManager get equipos =>
       $$EquiposTableTableManager(_db, _db.equipos);
   $$RepuestosTableTableManager get repuestos =>

@@ -6,6 +6,7 @@ part of 'talleres_dao.dart';
 mixin _$TalleresDaoMixin on DatabaseAccessor<AppDatabase> {
   $ClientesTable get clientes => attachedDatabase.clientes;
   $EquiposTable get equipos => attachedDatabase.equipos;
+  $TecnicosTable get tecnicos => attachedDatabase.tecnicos;
   $OrdenesReparacionTable get ordenesReparacion =>
       attachedDatabase.ordenesReparacion;
   $RepuestosTable get repuestos => attachedDatabase.repuestos;
@@ -23,6 +24,8 @@ class TalleresDaoManager {
       $$ClientesTableTableManager(_db.attachedDatabase, _db.clientes);
   $$EquiposTableTableManager get equipos =>
       $$EquiposTableTableManager(_db.attachedDatabase, _db.equipos);
+  $$TecnicosTableTableManager get tecnicos =>
+      $$TecnicosTableTableManager(_db.attachedDatabase, _db.tecnicos);
   $$OrdenesReparacionTableTableManager get ordenesReparacion =>
       $$OrdenesReparacionTableTableManager(
           _db.attachedDatabase, _db.ordenesReparacion);
