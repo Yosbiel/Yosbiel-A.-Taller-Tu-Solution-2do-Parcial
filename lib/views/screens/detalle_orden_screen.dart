@@ -23,11 +23,14 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
   final _trabajoDescCtrl = TextEditingController();
   final _trabajoCostoCtrl = TextEditingController();
 
+  // Verificamos si la orden ya está en un estado final para bloquear la edición.
   bool get _esFinal =>
       _estadoActual == 'entregada' || _estadoActual == 'cancelada';
 
+  // Solo permitimos añadir trabajos si la orden está en reparación.
   bool get _puedeEditarTrabajo => _estadoActual == 'en_reparacion';
 
+  // Controla si el botón de guardar debe estar habilitado.
   bool get _hayCambios =>
       _estadoActual != _estadoOriginal || _tecnicoId != _tecnicoOriginal;
 
@@ -50,6 +53,7 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
   Future<void> _guardar(DetalleOrdenViewModel vm) async {
     try {
       final dao = ref.read(talleresDaoProvider);
+      // Si el técnico cambió, validamos la reasignación primero.
       if (_tecnicoId != _tecnicoOriginal) {
         await dao.reasignarTecnicoUI(widget.orden.id, _tecnicoId);
       }
@@ -87,7 +91,6 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
     );
     if (ok != true) return;
     try {
-      // La pantalla solo interactua con el ViewModel, no con el DAO.
       await vm.liberarOrden();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -140,6 +143,7 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
       return;
     }
 
+    // Mostramos dos diálogos: uno para elegir el repuesto y otro para la cantidad.
     final sel = await mostrarSelectorRepuesto(context, repuestos);
     if (sel == null || !mounted) return;
 
@@ -181,7 +185,8 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
                       .map((t) => t.nombre)
                       .firstOrNull ??
                   'Sin asignar';
-          // Usamos el diccionario centralizado en estado_pildora.dart
+          
+          // Obtenemos las transiciones permitidas desde el estado original.
           final permitidos = transicionesPermitidas[_estadoOriginal] ?? const [];
           
           return ListView(
@@ -258,6 +263,7 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
                   }).toList(),
                   onChanged: (v) async {
                     if (v == null) return;
+                    // Si el nuevo estado es final, pedimos confirmación.
                     final esFinalNuevo = v == 'entregada' || v == 'cancelada';
                     if (esFinalNuevo) {
                       final ok = await showDialog<bool>(

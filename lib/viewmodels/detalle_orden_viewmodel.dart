@@ -3,6 +3,7 @@ import '../data/daos/talleres_dao.dart';
 import '../data/database/app_database.dart';
 import 'talleres_providers.dart';
 
+// Estado que representa la pantalla de Detalle de Orden.
 class DetalleOrdenState {
   final List<DetallesOrdenTrabajo> trabajos;
   final List<RepuestoUsadoItem> repuestos;
@@ -31,6 +32,8 @@ class DetalleOrdenState {
   }
 }
 
+// Provider que crea un ViewModel por cada orden. Usamos autoDispose para
+// liberar memoria cuando se sale de la pantalla.
 final detalleOrdenProvider = AsyncNotifierProvider.autoDispose
     .family<DetalleOrdenViewModel, DetalleOrdenState, OrdenesReparacionData>(
   DetalleOrdenViewModel.new,
@@ -38,11 +41,13 @@ final detalleOrdenProvider = AsyncNotifierProvider.autoDispose
 
 class DetalleOrdenViewModel
     extends AutoDisposeFamilyAsyncNotifier<DetalleOrdenState, OrdenesReparacionData> {
+  
   @override
   Future<DetalleOrdenState> build(OrdenesReparacionData arg) async {
     return _cargar(arg);
   }
 
+  // Carga los datos iniciales de la orden desde la base de datos.
   Future<DetalleOrdenState> _cargar(OrdenesReparacionData orden) async {
     final dao = ref.read(talleresDaoProvider);
     final trabajos = await dao.obtenerTrabajosDeOrden(orden.id);
@@ -57,8 +62,9 @@ class DetalleOrdenViewModel
     );
   }
 
-  // Envuelve una acción asíncrona para mostrar el estado "guardando" en la UI.
-  // Usamos try/finally para garantizar que el spinner se apague aunque falle.
+  // Método auxiliar que maneja el estado de "guardando" durante las acciones
+  // asíncronas. El bloque finally asegura que el spinner se apague y los
+  // datos se recarguen, incluso si la operación falla.
   Future<void> _ejecutarConEstado(Future<void> Function() accion) async {
     final actual = state.valueOrNull;
     if (actual == null) return;
@@ -67,7 +73,6 @@ class DetalleOrdenViewModel
     try {
       await accion();
     } finally {
-      // Recargamos los datos siempre al final para reflejar cambios reales en BD.
       state = AsyncData(await _cargar(arg));
     }
   }
@@ -97,8 +102,8 @@ class DetalleOrdenViewModel
     });
   }
 
-  // La vista ya no necesita conocer el DAO para liberar la orden.
-  // El ViewModel se encarga de orquestar la acción y recargar el estado.
+  // La lógica de liberar la orden se movió aquí para que la vista
+  // no tenga que comunicarse directamente con el DAO.
   Future<void> liberarOrden() async {
     await _ejecutarConEstado(() async {
       final dao = ref.read(talleresDaoProvider);

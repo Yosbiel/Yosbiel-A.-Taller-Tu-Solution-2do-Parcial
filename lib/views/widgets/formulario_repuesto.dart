@@ -4,16 +4,19 @@ import '../../data/database/app_database.dart';
 import '../../viewmodels/talleres_providers.dart';
 
 // Diálogo reutilizable para crear o editar un repuesto.
-// Si se pasa 'repuesto', entra en modo edición; si no, en modo creación.
+// Si recibe un 'repuesto', entra en modo edición; si no, en modo creación.
 Future<void> mostrarFormularioRepuesto(BuildContext context, WidgetRef ref, {RepuestosData? repuesto}) async {
   final esEdicion = repuesto != null;
   final formKey = GlobalKey<FormState>();
+  
+  // Prellenamos los controladores con los datos del repuesto si estamos editando.
   final codigoCtrl = TextEditingController(text: repuesto?.codigo ?? '');
   final nombreCtrl = TextEditingController(text: repuesto?.nombre ?? '');
   final precioCtrl = TextEditingController(text: repuesto != null ? repuesto.precio.toString() : '');
   final stockCtrl = TextEditingController(text: repuesto != null ? repuesto.existencias.toString() : '');
   
-  // Variable para mostrar errores que vienen del DAO (ej: código duplicado)
+  // Variable para mostrar errores del DAO (por ejemplo, código duplicado) 
+  // directamente en el campo de texto del formulario.
   String? errorServidor;
 
   await showDialog(
@@ -71,6 +74,7 @@ Future<void> mostrarFormularioRepuesto(BuildContext context, WidgetRef ref, {Rep
           ),
           ElevatedButton(
             onPressed: () async {
+              // Limpiamos el error del servidor antes de reintentar la validación
               setDlgState(() => errorServidor = null);
               if (!formKey.currentState!.validate()) return;
               
@@ -103,7 +107,8 @@ Future<void> mostrarFormularioRepuesto(BuildContext context, WidgetRef ref, {Rep
                 }
               } catch (e) {
                 final msg = e.toString();
-                // Si el DAO detecta que el código ya existe, lo mostramos en el campo
+                // Si el DAO detecta que el código ya existe, lo mostramos
+                // en el campo de texto para que el usuario lo corrija.
                 if (msg.contains('Ya existe')) {
                   setDlgState(() => errorServidor = 'Ya existe un repuesto con ese código');
                 } else {
