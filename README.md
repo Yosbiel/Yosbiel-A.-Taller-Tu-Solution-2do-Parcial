@@ -88,7 +88,7 @@
 <table align="center">
   <tr>
     <td align="center"><b>Órdenes Abiertas</b><br><img src="capturas/1_ordenes.png" width="200"></td>
-    <td align="center"><b>Detalle de Orden</b><br><img src="capturas/2_detalle.png" width="200"></td>
+    <td align="center"><b>Detalle de Orden</b><br><img src="capturas/2.1_detalle.png" width="200"><br><img src="capturas/2.2_detalle.png" width="200"></td>
     <td align="center"><b>Inventario</b><br><img src="capturas/3_inventario.png" width="200"></td>
   </tr>
   <tr>
