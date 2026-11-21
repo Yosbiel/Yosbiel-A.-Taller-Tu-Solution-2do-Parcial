@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/animaciones.dart';
 import '../widgets/botones_appbar.dart';
 import 'ordenes_screen.dart';
 import 'inventario_screen.dart';
@@ -20,7 +21,14 @@ class _HomeNavigatorState extends State<HomeNavigator> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_titulos[_indiceActual]),
+        title: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
+          child: Text(
+            _titulos[_indiceActual],
+            key: ValueKey<int>(_indiceActual),
+          ),
+        ),
         actions: const [BotonTema(), BotonInfo()],
       ),
       body: IndexedStack(
@@ -35,9 +43,18 @@ class _HomeNavigatorState extends State<HomeNavigator> {
         currentIndex: _indiceActual,
         onTap: (i) => setState(() => _indiceActual = i),
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.list_alt), label: 'Ordenes'),
-          BottomNavigationBarItem(icon: Icon(Icons.inventory), label: 'Inventario'),
-          BottomNavigationBarItem(icon: Icon(Icons.analytics), label: 'Consultas'),
+          BottomNavigationBarItem(
+            icon: IconoRebote(icon: Icons.list_alt, isSelected: _indiceActual == 0),
+            label: 'Órdenes',
+          ),
+          BottomNavigationBarItem(
+            icon: IconoRebote(icon: Icons.inventory, isSelected: _indiceActual == 1),
+            label: 'Inventario',
+          ),
+          BottomNavigationBarItem(
+            icon: IconoRebote(icon: Icons.analytics, isSelected: _indiceActual == 2),
+            label: 'Consultas',
+          ),
         ],
       ),
     );

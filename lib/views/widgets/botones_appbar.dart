@@ -13,7 +13,17 @@ class BotonTema extends ConsumerWidget {
             MediaQuery.of(context).platformBrightness == Brightness.dark);
     return IconButton(
       tooltip: esOscuro ? 'Modo claro' : 'Modo oscuro',
-      icon: Icon(esOscuro ? Icons.light_mode : Icons.dark_mode),
+      icon: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        transitionBuilder: (child, animation) => RotationTransition(
+          turns: animation,
+          child: ScaleTransition(scale: animation, child: child),
+        ),
+        child: Icon(
+          esOscuro ? Icons.light_mode : Icons.dark_mode,
+          key: ValueKey<bool>(esOscuro),
+        ),
+      ),
       onPressed: () {
         ref.read(themeModeProvider.notifier).setMode(
               esOscuro ? ThemeMode.light : ThemeMode.dark,

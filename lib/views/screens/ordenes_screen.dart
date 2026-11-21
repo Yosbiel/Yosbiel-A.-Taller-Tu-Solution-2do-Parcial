@@ -4,6 +4,7 @@ import '../../viewmodels/talleres_providers.dart';
 import '../widgets/estado_pildora.dart';
 import 'nueva_orden_screen.dart';
 import 'detalle_orden_screen.dart';
+import '../widgets/animaciones.dart';
 import '../widgets/boton_boing.dart';
 
 class OrdenesScreen extends ConsumerWidget {
@@ -65,7 +66,7 @@ class OrdenesScreen extends ConsumerWidget {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const NuevaOrdenScreen()),
+            RutaDeslizante(page: const NuevaOrdenScreen()),
           );
         },
         child: const Icon(Icons.add),

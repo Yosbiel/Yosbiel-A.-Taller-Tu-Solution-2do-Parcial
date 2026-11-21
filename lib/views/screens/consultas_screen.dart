@@ -6,6 +6,7 @@ import '../../data/database/app_database.dart';
 import '../../viewmodels/talleres_providers.dart';
 import '../widgets/estado_pildora.dart';
 import 'detalle_orden_screen.dart';
+import '../widgets/animaciones.dart';
 
 class ConsultasScreen extends ConsumerStatefulWidget {
   const ConsultasScreen({Key? key}) : super(key: key);
