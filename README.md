@@ -52,10 +52,10 @@
   <li><code>lib/</code>:
     <ul>
       <li><code>data/database/</code>: Configuración de Drift, tablas y migraciones.</li>
-      <li><code>data/daos/</code>: Acceso a datos (<code>TalleresDao</code>).</li>
+      <li><code>data/daos/</code>: Acceso a datos (<code>TalleresDao</code>) y excepciones personalizadas.</li>
       <li><code>viewmodels/</code>: Providers de Riverpod y ViewModels.</li>
       <li><code>views/screens/</code>: Pantallas de la interfaz.</li>
-      <li><code>views/widgets/</code>: Widgets reutilizables.</li>
+      <li><code>views/widgets/</code>: Widgets reutilizables y estilos de estado.</li>
     </ul>
   </li>
 </ul>
@@ -66,14 +66,16 @@
   <li><b>Técnico responsable</b>: dropdown con los 3 técnicos (Carlos, Ana, Luis). Si la orden está <code>en_reparacion</code> y ya la tiene otro técnico, se bloquea la reasignación hasta liberarla.</li>
   <li><b>Reparación</b>: registrar mano de obra y añadir repuestos del almacén. El stock se descuenta automáticamente. Costo total = mano de obra + repuestos.</li>
   <li><b>Inventario</b>: CRUD de repuestos con validación de código único y alerta visual de stock bajo (≤ 3).</li>
-  <li><b>Consultas</b>: carga de trabajo por técnico, repuestos con stock bajo, e historial por equipo o cliente con búsqueda reactiva.</li>
+  <li><b>Consultas</b>: carga de trabajo por técnico (mostrando nombres reales), repuestos con stock bajo, e historial con búsqueda reactiva y selector <b>Equipo / Cliente</b>.</li>
 </ul>
 
-<h2>Decisiones de Diseño</h2>
+<h2>Decisiones de Diseño y Optimización</h2>
 <ul>
-  <li><b>Bloqueo de reasignación de equipo</b>: si llega un equipo con serie existente pero otro dueño, la app bloquea el registro silencioso y pide usar "Reasignar equipo". Así se preserva el historial del dueño anterior.</li>
+  <li><b>Bloqueo de reasignación de equipo</b>: si llega un equipo con serie existente pero otro dueño, la app bloquea el registro silencioso y muestra un diálogo claro usando excepciones personalizadas.</li>
   <li><b>Transiciones validadas</b>: no se permiten retrocesos (<code>entregada</code> → <code>recibida</code>) ni cambios desde estados finales.</li>
   <li><b>Stock con transacción</b>: al añadir un repuesto se relee el stock dentro de la transacción para evitar condiciones de carrera.</li>
+  <li><b>Integridad referencial</b>: se activa <code>PRAGMA foreign_keys = ON</code> en la conexión SQLite para garantizar que las relaciones se cumplan.</li>
+  <li><b>Código sin duplicación</b>: los mapeadores del DAO reutilizan la lógica de conversión de filas SQL a objetos Dart para las versiones <code>Future</code> y <code>Stream</code>.</li>
   <li><b>Búsqueda reactiva</b>: filtros de historial con debounce de 300 ms.</li>
   <li><b>Tema persistente</b>: el modo claro/oscuro se guarda con <code>shared_preferences</code>.</li>
   <li><b>Técnicos fijos</b>: el enunciado especifica 3 técnicos; se siembran en la primera ejecución.</li>
@@ -82,14 +84,22 @@
 
 <h2>Capturas de Pantalla</h2>
 <p>Las capturas reales de la aplicación corriendo se encuentran en la carpeta <a href="capturas/">capturas/</a>:</p>
-<ul>
-  <li>Lista de órdenes abiertas con estado y técnico.</li>
-  <li>Detalle de orden en reparación con trabajos y repuestos.</li>
-  <li>Inventario con alerta de stock bajo.</li>
-  <li>Carga de trabajo por técnico.</li>
-  <li>Historial por equipo y por cliente.</li>
-  <li>Modo oscuro.</li>
-</ul>
+
+<table align="center">
+  <tr>
+    <td align="center"><b>Órdenes Abiertas</b><br><img src="capturas/1_ordenes.png" width="200"></td>
+    <td align="center"><b>Detalle de Orden</b><br><img src="capturas/2_detalle.png" width="200"></td>
+    <td align="center"><b>Inventario</b><br><img src="capturas/3_inventario.png" width="200"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Carga y Stock</b><br><img src="capturas/4_carga_stock.png" width="200"></td>
+    <td align="center"><b>Historial por Cliente</b><br><img src="capturas/5_historial_cliente.png" width="200"></td>
+    <td align="center"><b>Historial por Equipo</b><br><img src="capturas/6_historial_equipo.png" width="200"></td>
+  </tr>
+  <tr>
+    <td align="center" colspan="3"><b>Modo Oscuro</b><br><img src="capturas/7_modo_oscuro.png" width="200"></td>
+  </tr>
+</table>
 
 ---
 
