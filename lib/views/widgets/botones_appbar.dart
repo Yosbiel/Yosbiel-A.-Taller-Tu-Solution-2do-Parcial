@@ -2,15 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../viewmodels/talleres_providers.dart';
 
+// Botón para alternar entre modo claro y oscuro.
 class BotonTema extends ConsumerWidget {
   const BotonTema({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final modo = ref.watch(themeModeProvider);
+    // Determinamos si el modo oscuro está activo (o si el sistema lo está)
     final esOscuro = modo == ThemeMode.dark ||
         (modo == ThemeMode.system &&
             MediaQuery.of(context).platformBrightness == Brightness.dark);
+            
     return IconButton(
       tooltip: esOscuro ? 'Modo claro' : 'Modo oscuro',
       icon: AnimatedSwitcher(
@@ -25,6 +28,7 @@ class BotonTema extends ConsumerWidget {
         ),
       ),
       onPressed: () {
+        // Guardamos la preferencia en SharedPreferences a través del provider
         ref.read(themeModeProvider.notifier).setMode(
               esOscuro ? ThemeMode.light : ThemeMode.dark,
             );
@@ -33,6 +37,7 @@ class BotonTema extends ConsumerWidget {
   }
 }
 
+// Botón de información que muestra un diálogo con datos del proyecto.
 class BotonInfo extends StatelessWidget {
   const BotonInfo({Key? key}) : super(key: key);
 
@@ -97,6 +102,7 @@ class BotonInfo extends StatelessWidget {
     );
   }
 
+  // Helper para armar las filas del diálogo con su ícono correspondiente
   Widget _fila(BuildContext context, IconData icono, String texto) {
     return Row(
       children: [

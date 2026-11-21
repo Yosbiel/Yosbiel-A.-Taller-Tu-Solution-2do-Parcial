@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/database/app_database.dart';
 import '../../viewmodels/talleres_providers.dart';
 
-// Diálogo para crear o editar un repuesto.
+// Diálogo reutilizable para crear o editar un repuesto.
+// Si se pasa 'repuesto', entra en modo edición; si no, en modo creación.
 Future<void> mostrarFormularioRepuesto(BuildContext context, WidgetRef ref, {RepuestosData? repuesto}) async {
   final esEdicion = repuesto != null;
   final formKey = GlobalKey<FormState>();
@@ -11,6 +12,8 @@ Future<void> mostrarFormularioRepuesto(BuildContext context, WidgetRef ref, {Rep
   final nombreCtrl = TextEditingController(text: repuesto?.nombre ?? '');
   final precioCtrl = TextEditingController(text: repuesto != null ? repuesto.precio.toString() : '');
   final stockCtrl = TextEditingController(text: repuesto != null ? repuesto.existencias.toString() : '');
+  
+  // Variable para mostrar errores que vienen del DAO (ej: código duplicado)
   String? errorServidor;
 
   await showDialog(
@@ -100,6 +103,7 @@ Future<void> mostrarFormularioRepuesto(BuildContext context, WidgetRef ref, {Rep
                 }
               } catch (e) {
                 final msg = e.toString();
+                // Si el DAO detecta que el código ya existe, lo mostramos en el campo
                 if (msg.contains('Ya existe')) {
                   setDlgState(() => errorServidor = 'Ya existe un repuesto con ese código');
                 } else {

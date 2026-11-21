@@ -19,11 +19,13 @@ class _NuevaOrdenScreenState extends ConsumerState<NuevaOrdenScreen> {
   final _modeloCtrl = TextEditingController();
   final _serieCtrl = TextEditingController();
   final _fallaCtrl = TextEditingController();
+  
   String _tipoSeleccionado = 'Celular';
   bool _guardando = false;
 
   @override
   void dispose() {
+    // Liberar controladores al cerrar la pantalla para evitar fugas de memoria
     _nombreCtrl.dispose();
     _telefonoCtrl.dispose();
     _marcaCtrl.dispose();
@@ -33,8 +35,8 @@ class _NuevaOrdenScreenState extends ConsumerState<NuevaOrdenScreen> {
     super.dispose();
   }
 
-  // Normaliza el telefono: quita espacios, guiones y parentesis.
   String _normalizarTelefono(String t) {
+    // Quitamos espacios, guiones y paréntesis para guardar el número limpio
     return t.replaceAll(RegExp(r'[\s\-\(\)]'), '');
   }
 
@@ -46,6 +48,7 @@ class _NuevaOrdenScreenState extends ConsumerState<NuevaOrdenScreen> {
   String? _validarTelefono(String? v) {
     final normalizado = _normalizarTelefono(v ?? '');
     if (normalizado.isEmpty) return 'Campo obligatorio';
+    // Validación estricta: 7 a 15 dígitos, con + opcional al inicio
     if (!RegExp(r'^\+?\d{7,15}$').hasMatch(normalizado)) {
       return 'Teléfono inválido (7-15 dígitos, opcional +)';
     }
@@ -55,6 +58,7 @@ class _NuevaOrdenScreenState extends ConsumerState<NuevaOrdenScreen> {
   Future<void> _guardarOrden() async {
     if (_guardando) return;
     if (!_formKey.currentState!.validate()) return;
+    
     setState(() => _guardando = true);
     try {
       final dao = ref.read(talleresDaoProvider);
@@ -71,25 +75,20 @@ class _NuevaOrdenScreenState extends ConsumerState<NuevaOrdenScreen> {
       Navigator.pop(context);
     } on EquipoYaRegistradoException catch (e) {
       if (!mounted) return;
-      // Serie ya registrada a otro dueño: mostrar diálogo claro.
-      final mensaje = e.mensaje;
-      if (mensaje.contains('ya esta registrado a nombre de')) {
-        await showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Equipo ya registrado'),
-            content: Text(mensaje),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Entendido'),
-              ),
-            ],
-          ),
-        );
-      } else {
-        _mostrarSnack('Error: $mensaje');
-      }
+      // Atrapamos la excepción específica del DAO y mostramos un diálogo claro
+      await showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Equipo ya registrado'),
+          content: Text(e.mensaje),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Entendido'),
+            ),
+          ],
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       _mostrarSnack('Error: $e');
@@ -125,6 +124,7 @@ class _NuevaOrdenScreenState extends ConsumerState<NuevaOrdenScreen> {
                 helperText: 'Ej: +5355123456 o 5512-3456',
               ),
               keyboardType: TextInputType.phone,
+              // Solo permitimos números, +, espacios, guiones y paréntesis
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'[\d\+\s\-\(\)]')),
               ],

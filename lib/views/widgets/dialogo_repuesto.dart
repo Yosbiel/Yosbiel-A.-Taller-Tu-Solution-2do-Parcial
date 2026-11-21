@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../data/database/app_database.dart';
 
-// Muestra el diálogo para elegir un repuesto del almacén.
-// Devuelve el repuesto seleccionado o null si se cancela.
+// Muestra un diálogo para que el técnico elija un repuesto del almacén.
+// Devuelve el repuesto seleccionado, o null si se cancela.
 Future<RepuestosData?> mostrarSelectorRepuesto(BuildContext context, List<RepuestosData> repuestos) async {
   return showDialog<RepuestosData>(
     context: context,
@@ -15,6 +15,7 @@ Future<RepuestosData?> mostrarSelectorRepuesto(BuildContext context, List<Repues
           itemCount: repuestos.length,
           itemBuilder: (_, i) {
             final r = repuestos[i];
+            // Si el repuesto no tiene stock, se deshabilita en la lista
             return ListTile(
               title: Text(r.nombre),
               subtitle: Text('Stock: ${r.existencias} | \$${r.precio.toStringAsFixed(2)}'),
@@ -34,8 +35,8 @@ Future<RepuestosData?> mostrarSelectorRepuesto(BuildContext context, List<Repues
   );
 }
 
-// Muestra el diálogo para elegir la cantidad de un repuesto.
-// Devuelve la cantidad válida o null si se cancela.
+// Muestra un diálogo para pedir la cantidad de un repuesto específico.
+// Valida que no se pida más de lo que hay en stock.
 Future<int?> mostrarCantidadRepuesto(BuildContext context, RepuestosData repuesto) async {
   final ctrl = TextEditingController(text: '1');
   final formKey = GlobalKey<FormState>();

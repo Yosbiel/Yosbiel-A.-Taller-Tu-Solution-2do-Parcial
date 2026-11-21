@@ -8,7 +8,7 @@ import '../widgets/formulario_repuesto.dart';
 class InventarioScreen extends ConsumerWidget {
   const InventarioScreen({Key? key}) : super(key: key);
 
-
+  // Diálogo de confirmación antes de borrar un repuesto
   Future<void> _confirmarEliminar(
     BuildContext context,
     WidgetRef ref,
@@ -18,8 +18,7 @@ class InventarioScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Eliminar repuesto'),
-        content: Text(
-            'Se eliminara "${repuesto.nombre}" (${repuesto.codigo}).'),
+        content: Text('Se eliminara "${repuesto.nombre}" (${repuesto.codigo}).'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -46,6 +45,7 @@ class InventarioScreen extends ConsumerWidget {
         );
       }
     } catch (e) {
+      // Si el repuesto está usado en una orden, el DAO lanza error y lo mostramos
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('No se pudo eliminar: $e')),
@@ -58,6 +58,7 @@ class InventarioScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final repuestosAsync = ref.watch(todosRepuestosProvider);
     final theme = Theme.of(context);
+    
     return Scaffold(
       body: repuestosAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -70,22 +71,17 @@ class InventarioScreen extends ConsumerWidget {
             itemCount: lista.length,
             itemBuilder: (context, i) {
               final item = lista[i];
+              // Si el stock es de 3 o menos, se pinta de rojo como alerta
               final stockBajo = item.existencias <= 3;
               return Card(
-                margin:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 child: ListTile(
                   leading: Icon(
-                    stockBajo
-                        ? Icons.warning_amber_rounded
-                        : Icons.inventory_2,
-                    color: stockBajo
-                        ? theme.colorScheme.error
-                        : theme.colorScheme.primary,
+                    stockBajo ? Icons.warning_amber_rounded : Icons.inventory_2,
+                    color: stockBajo ? theme.colorScheme.error : theme.colorScheme.primary,
                   ),
                   title: Text('${item.nombre} (${item.codigo})'),
-                  subtitle:
-                      Text('Precio: \$${item.precio.toStringAsFixed(2)}'),
+                  subtitle: Text('Precio: \$${item.precio.toStringAsFixed(2)}'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -105,10 +101,8 @@ class InventarioScreen extends ConsumerWidget {
                           }
                         },
                         itemBuilder: (_) => const [
-                          PopupMenuItem(
-                              value: 'editar', child: Text('Editar')),
-                          PopupMenuItem(
-                              value: 'eliminar', child: Text('Eliminar')),
+                          PopupMenuItem(value: 'editar', child: Text('Editar')),
+                          PopupMenuItem(value: 'eliminar', child: Text('Eliminar')),
                         ],
                       ),
                     ],

@@ -12,6 +12,7 @@ class OrdenesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Escuchamos el stream de órdenes abiertas para que la UI se actualice sola
     final ordenesAsync = ref.watch(ordenesAbiertasProvider);
     final tecnicosAsync = ref.watch(tecnicosProvider);
 
@@ -23,8 +24,10 @@ class OrdenesScreen extends ConsumerWidget {
           if (ordenes.isEmpty) {
             return const Center(child: Text('No hay ordenes abiertas.'));
           }
+          // Mapeamos los técnicos por ID para buscar el nombre rápido en la lista
           final tecnicos = tecnicosAsync.valueOrNull ?? const [];
           final porId = {for (final t in tecnicos) t.id: t.nombre};
+          
           return ListView.builder(
             itemCount: ordenes.length,
             itemBuilder: (context, i) {
@@ -40,6 +43,7 @@ class OrdenesScreen extends ConsumerWidget {
                     padding: const EdgeInsets.only(top: 6),
                     child: Row(
                       children: [
+                        // Píldora de color según el estado de la orden
                         EstadoPildora(estado: orden.estado),
                         const SizedBox(width: 8),
                         Expanded(child: Text('Técnico: $tecnico')),
@@ -48,6 +52,7 @@ class OrdenesScreen extends ConsumerWidget {
                   ),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
+                    // Navegación con animación personalizada
                     Navigator.push(
                       context,
                       RutaDeslizante(

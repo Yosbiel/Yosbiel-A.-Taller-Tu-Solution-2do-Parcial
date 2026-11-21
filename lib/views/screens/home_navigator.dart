@@ -13,6 +13,7 @@ class HomeNavigator extends StatefulWidget {
 }
 
 class _HomeNavigatorState extends State<HomeNavigator> {
+  // Índice de la pestaña actual seleccionada (0: Órdenes, 1: Inventario, 2: Consultas)
   int _indiceActual = 0;
 
   static const _titulos = ['Órdenes', 'Inventario', 'Consultas'];
@@ -21,6 +22,7 @@ class _HomeNavigatorState extends State<HomeNavigator> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        // Animación simple para que el título cambie suavemente al navegar
         title: AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),
           transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
@@ -34,6 +36,7 @@ class _HomeNavigatorState extends State<HomeNavigator> {
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
         transitionBuilder: (Widget child, Animation<double> animation) {
+          // Efecto de deslizamiento al cambiar de pestaña
           return FadeTransition(
             opacity: animation,
             child: SlideTransition(
@@ -45,6 +48,7 @@ class _HomeNavigatorState extends State<HomeNavigator> {
             ),
           );
         },
+        // KeyedSubtree asegura que AnimatedSwitcher detecte el cambio de pantalla
         child: KeyedSubtree(
           key: ValueKey<int>(_indiceActual),
           child: [
