@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/database/app_database.dart';
 import '../../viewmodels/talleres_providers.dart';
+import '../widgets/boton_boing.dart';
 
 class InventarioScreen extends ConsumerWidget {
   const InventarioScreen({Key? key}) : super(key: key);
@@ -247,7 +248,11 @@ class InventarioScreen extends ConsumerWidget {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: BotonBoing(
+        tooltip: 'Nuevo repuesto',
+        onPressed: () => _mostrarFormulario(context, ref),
+        child: const Icon(Icons.add),
+      ),
         onPressed: () => _mostrarFormulario(context, ref),
         child: const Icon(Icons.add),
       ),

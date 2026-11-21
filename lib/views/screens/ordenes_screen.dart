@@ -4,6 +4,7 @@ import '../../viewmodels/talleres_providers.dart';
 import '../widgets/estado_pildora.dart';
 import 'nueva_orden_screen.dart';
 import 'detalle_orden_screen.dart';
+import '../widgets/boton_boing.dart';
 
 class OrdenesScreen extends ConsumerWidget {
   const OrdenesScreen({Key? key}) : super(key: key);
@@ -59,7 +60,16 @@ class OrdenesScreen extends ConsumerWidget {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: BotonBoing(
+        tooltip: 'Nueva orden',
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const NuevaOrdenScreen()),
+          );
+        },
+        child: const Icon(Icons.add),
+      ),
         onPressed: () {
           Navigator.push(
             context,
