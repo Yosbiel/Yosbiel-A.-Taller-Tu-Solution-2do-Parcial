@@ -4,12 +4,14 @@ import 'viewmodels/talleres_providers.dart';
 import 'views/screens/home_navigator.dart';
 
 void main() {
-  // Asegura que los bindings de Flutter estén listos antes de usar SharedPreferences.
+  // Aseguramos que los bindings de Flutter estén listos antes de usar
+  // SharedPreferences (que se usa para guardar el tema).
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const ProviderScope(child: TuSolutionApp()));
 }
 
-// Función de nivel superior para construir el tema. Evita recrearlo en cada build.
+// Función de nivel superior para construir el tema. Al estar fuera de la clase,
+// evitamos recrearlo en cada rebuild del widget.
 ThemeData _buildTheme(Brightness brightness) {
   final esOscuro = brightness == Brightness.dark;
   final scheme = ColorScheme.fromSeed(
@@ -35,6 +37,7 @@ class TuSolutionApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Escuchamos el provider del tema para que la UI cambie en tiempo real.
     final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp(
