@@ -370,7 +370,7 @@ class TalleresDao extends DatabaseAccessor<AppDatabase> with _$TalleresDaoMixin 
       ..where(db.detallesOrdenTrabajos.ordenId.equals(ordenId));
     final totalManoObra = (await manoObraQuery.getSingle()).read(manoObraExpr) ?? 0.0;
 
-    final totalLineaExpr = (db.detallesOrdenRepuestos.cantidad * db.detallesOrdenRepuestos.precioUnitario).sum();
+    final totalLineaExpr = (db.detallesOrdenRepuestos.cantidad.cast<double>() * db.detallesOrdenRepuestos.precioUnitario).sum();
     final repuestosQuery = selectOnly(db.detallesOrdenRepuestos)
       ..addColumns([totalLineaExpr])
       ..where(db.detallesOrdenRepuestos.ordenId.equals(ordenId));

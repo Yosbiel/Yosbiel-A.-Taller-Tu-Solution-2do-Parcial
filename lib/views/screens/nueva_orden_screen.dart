@@ -72,7 +72,7 @@ class _NuevaOrdenScreenState extends ConsumerState<NuevaOrdenScreen> {
     } on EquipoYaRegistradoException catch (e) {
       if (!mounted) return;
       // Serie ya registrada a otro dueño: mostrar diálogo claro.
-      final mensaje = e.message;
+      final mensaje = e.mensaje;
       if (mensaje.contains('ya esta registrado a nombre de')) {
         await showDialog(
           context: context,
