@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../viewmodels/talleres_providers.dart';
+import '../../data/daos/excepciones_taller.dart';
 
 class NuevaOrdenScreen extends ConsumerStatefulWidget {
   const NuevaOrdenScreen({Key? key}) : super(key: key);
@@ -68,7 +69,7 @@ class _NuevaOrdenScreenState extends ConsumerState<NuevaOrdenScreen> {
       );
       if (!mounted) return;
       Navigator.pop(context);
-    } on StateError catch (e) {
+    } on EquipoYaRegistradoException catch (e) {
       if (!mounted) return;
       // Serie ya registrada a otro dueño: mostrar diálogo claro.
       final mensaje = e.message;

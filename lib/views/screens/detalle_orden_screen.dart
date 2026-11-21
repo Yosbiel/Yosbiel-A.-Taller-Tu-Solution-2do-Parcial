@@ -5,6 +5,7 @@ import '../../data/database/app_database.dart';
 import '../../viewmodels/detalle_orden_viewmodel.dart';
 import '../../viewmodels/talleres_providers.dart';
 import '../widgets/estado_pildora.dart';
+import '../widgets/dialogo_repuesto.dart';
 
 class DetalleOrdenScreen extends ConsumerStatefulWidget {
   final OrdenesReparacionData orden;
@@ -21,22 +22,6 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
   int? _tecnicoOriginal;
   final _trabajoDescCtrl = TextEditingController();
   final _trabajoCostoCtrl = TextEditingController();
-
-  static const _todosEstados = [
-    'recibida',
-    'en_reparacion',
-    'lista',
-    'entregada',
-    'cancelada',
-  ];
-
-  static const _transiciones = {
-    'recibida': ['en_reparacion', 'cancelada'],
-    'en_reparacion': ['lista', 'cancelada'],
-    'lista': ['entregada', 'cancelada'],
-    'entregada': <String>[],
-    'cancelada': <String>[],
-  };
 
   bool get _esFinal =>
       _estadoActual == 'entregada' || _estadoActual == 'cancelada';
@@ -82,7 +67,7 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
     }
   }
 
-  Future<void> _liberar() async {
+  Future<void> _liberar(DetalleOrdenViewModel vm) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -102,8 +87,8 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
     );
     if (ok != true) return;
     try {
-      final dao = ref.read(talleresDaoProvider);
-      await dao.liberarOrden(widget.orden.id);
+      // La pantalla solo interactua con el ViewModel, no con el DAO.
+      await vm.liberarOrden();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Orden liberada')),
@@ -147,91 +132,30 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
     final dao = ref.read(talleresDaoProvider);
     final repuestos = await dao.obtenerTodosRepuestos();
     if (!mounted) return;
+    
     if (repuestos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sin repuestos en almacen.')),
+        const SnackBar(content: Text("Sin repuestos en almacén.")),
       );
       return;
     }
-    final sel = await showDialog<RepuestosData>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Seleccionar repuesto'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: repuestos.length,
-            itemBuilder: (_, i) {
-              final r = repuestos[i];
-              return ListTile(
-                title: Text(r.nombre),
-                subtitle: Text(
-                    'Stock: ${r.existencias} | \$${r.precio.toStringAsFixed(2)}'),
-                enabled: r.existencias > 0,
-                onTap: r.existencias > 0 ? () => Navigator.pop(ctx, r) : null,
-              );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
-          ),
-        ],
-      ),
-    );
+
+    final sel = await mostrarSelectorRepuesto(context, repuestos);
     if (sel == null || !mounted) return;
-    final cant = await showDialog<int>(
-      context: context,
-      builder: (ctx) {
-        final ctrl = TextEditingController(text: '1');
-        final formKey = GlobalKey<FormState>();
-        return AlertDialog(
-          title: Text(sel.nombre),
-          content: Form(
-            key: formKey,
-            child: TextFormField(
-              controller: ctrl,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                  labelText: 'Cantidad (max ${sel.existencias})'),
-              validator: (v) {
-                final n = int.tryParse((v ?? '').trim());
-                if (n == null || n <= 0) return 'Cantidad invalida';
-                if (n > sel.existencias) return 'Solo hay ${sel.existencias}';
-                return null;
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancelar'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (!formKey.currentState!.validate()) return;
-                Navigator.pop(ctx, int.parse(ctrl.text.trim()));
-              },
-              child: const Text('Agregar'),
-            ),
-          ],
-        );
-      },
-    );
+
+    final cant = await mostrarCantidadRepuesto(context, sel);
     if (cant == null || !mounted) return;
+
     try {
       await vm.agregarRepuesto(sel.id, cant);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Se agregaron $cant x ${sel.nombre}')),
+        SnackBar(content: Text("Se agregaron $cant x ${sel.nombre}")),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        SnackBar(content: Text("Error: $e")),
       );
     }
   }
@@ -257,8 +181,9 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
                       .map((t) => t.nombre)
                       .firstOrNull ??
                   'Sin asignar';
-          // Estados destino permitidos desde el original (no desde el actual).
-          final permitidos = _transiciones[_estadoOriginal] ?? const [];
+          // Usamos el diccionario centralizado en estado_pildora.dart
+          final permitidos = transicionesPermitidas[_estadoOriginal] ?? const [];
+          
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
@@ -305,7 +230,7 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton.icon(
-                      onPressed: _liberar,
+                      onPressed: () => _liberar(vm),
                       icon: const Icon(Icons.person_off, size: 18),
                       label: const Text('Liberar orden'),
                     ),
@@ -314,7 +239,7 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
                 DropdownButtonFormField<String>(
                   value: _estadoActual,
                   decoration: const InputDecoration(labelText: 'Estado'),
-                  items: _todosEstados.map((e) {
+                  items: todosLosEstados.map((e) {
                     final esActual = e == _estadoActual;
                     final esPermitido = permitidos.contains(e) || esActual;
                     return DropdownMenuItem<String>(
@@ -356,8 +281,8 @@ class _DetalleOrdenScreenState extends ConsumerState<DetalleOrdenScreen> {
                       );
                       if (ok != true) return;
                       setState(() => _estadoActual = v);
-                      final vm = ref.read(detalleOrdenProvider(widget.orden).notifier);
-                      await _guardar(vm);
+                      final vmActual = ref.read(detalleOrdenProvider(widget.orden).notifier);
+                      await _guardar(vmActual);
                     } else {
                       setState(() => _estadoActual = v);
                     }

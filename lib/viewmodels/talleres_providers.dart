@@ -95,8 +95,7 @@ final themeModeProvider =
   return ThemeModeNotifier();
 });
 
-final historialCompletoProvider =
-    StreamProvider.autoDispose<List<OrdenesReparacionData>>((ref) {
+final historialCompletoProvider = FutureProvider.autoDispose<List<HistorialOrdenItem>>((ref) async {
   final dao = ref.watch(talleresDaoProvider);
-  return dao.watchTodasLasOrdenes();
+  return await dao.obtenerHistorialCompleto();
 });

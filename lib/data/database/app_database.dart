@@ -24,7 +24,6 @@ part 'app_database.g.dart';
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
-  // v3: nombres reales de tecnicos.
   @override
   int get schemaVersion => 3;
 
@@ -43,7 +42,6 @@ class AppDatabase extends _$AppDatabase {
           await _seedTecnicos();
         }
         if (from < 3) {
-          // v3: borrar los tecnicos viejos ("Tecnico 1..3") y sembrar los reales.
           await delete(tecnicos).go();
           await _seedTecnicos();
         }
@@ -63,6 +61,9 @@ LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'tu_solution.sqlite'));
-    return NativeDatabase.createInBackground(file);
+    // Activamos las llaves foráneas para que SQLite haga cumplir las referencias.
+    return NativeDatabase.createInBackground(file, setup: (db) {
+      db.execute('PRAGMA foreign_keys = ON');
+    });
   });
 }

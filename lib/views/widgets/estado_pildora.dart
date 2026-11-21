@@ -1,5 +1,24 @@
 import 'package:flutter/material.dart';
 
+// Lista de todos los estados posibles en el flujo de una orden.
+const List<String> todosLosEstados = [
+  'recibida',
+  'en_reparacion',
+  'lista',
+  'entregada',
+  'cancelada',
+];
+
+// Diccionario que define a qué estados puede pasar una orden desde su estado actual.
+// Entregada y cancelada son estados finales, no permiten salida.
+const Map<String, List<String>> transicionesPermitidas = {
+  'recibida': ['en_reparacion', 'cancelada'],
+  'en_reparacion': ['lista', 'cancelada'],
+  'lista': ['entregada', 'cancelada'],
+  'entregada': <String>[],
+  'cancelada': <String>[],
+};
+
 String estadoBonito(String estado) {
   switch (estado) {
     case 'recibida':

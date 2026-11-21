@@ -22,6 +22,9 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
   String _busqueda = '';
   Timer? _debounce;
 
+  // Nuevo estado para el toggle Equipo/Cliente
+  bool _buscarPorCliente = false;
+
   @override
   void initState() {
     super.initState();
@@ -50,34 +53,7 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
     return '$d/$m/$y';
   }
 
-  Widget _tarjetaSimple(OrdenesReparacionData orden) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        title: Text('Falla: ${orden.fallaReportada}'),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: Row(
-            children: [
-              EstadoPildora(estado: orden.estado),
-              const SizedBox(width: 8),
-              Text('Fecha: ${_formatearFecha(orden.fechaCreacion)}'),
-            ],
-          ),
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: () {
-          Navigator.push(
-            context,
-            RutaDeslizante(
-              page: DetalleOrdenScreen(orden: orden),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
+  // Widget unificado para mostrar una tarjeta de historial
   Widget _tarjeta(HistorialOrdenItem item) {
     final tecnico = item.tecnicoNombre ?? 'Sin asignar';
     return Card(
@@ -139,6 +115,7 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
           child: TabBarView(
             controller: _tabCtrl,
             children: [
+              // --- PESTAÑA 1: CARGA Y STOCK ---
               ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
@@ -185,34 +162,63 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
                   ),
                 ],
               ),
+              
+              // --- PESTAÑA 2: HISTORIAL ---
               Column(
                 children: [
+                  // Toggle Equipo / Cliente
                   Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    child: SegmentedButton<bool>(
+                      segments: const [
+                        ButtonSegment(value: false, label: Text('Equipo'), icon: Icon(Icons.devices)),
+                        ButtonSegment(value: true, label: Text('Cliente'), icon: Icon(Icons.person)),
+                      ],
+                      selected: {_buscarPorCliente},
+                      onSelectionChanged: (Set<bool> newSelection) {
+                        setState(() {
+                          _buscarPorCliente = newSelection.first;
+                          _busqueda = ''; // Limpiar búsqueda al cambiar
+                          _busquedaCtrl.clear();
+                        });
+                      },
+                    ),
+                  ),
+                  // Buscador dinámico
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: TextField(
                       controller: _busquedaCtrl,
                       decoration: InputDecoration(
-                        labelText: 'Buscar por equipo (serie/marca) o cliente',
+                        labelText: _buscarPorCliente 
+                            ? 'Buscar por nombre o teléfono...' 
+                            : 'Buscar por serie, marca o modelo...',
                         prefixIcon: Icon(Icons.search, color: theme.colorScheme.primary),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       onChanged: _onBuscar,
                     ),
                   ),
+                  const SizedBox(height: 8),
                   Expanded(
                     child: _busqueda.isEmpty
+                        // Si no hay búsqueda, mostramos TODO el historial (con datos de cliente)
                         ? ref.watch(historialCompletoProvider).when(
                             loading: () => const Center(child: CircularProgressIndicator()),
                             error: (e, _) => Center(child: Text('Error: $e')),
                             data: (res) {
-                              if (res.isEmpty) return const Center(child: Text('Sin resultados.'));
+                              if (res.isEmpty) return const Center(child: Text('No hay órdenes registradas.'));
                               return ListView(
                                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                                children: res.map((o) => _tarjetaSimple(o)).toList(),
+                                children: res.map((i) => _tarjeta(i)).toList(),
                               );
                             },
                           )
-                        : ref.watch(historialEquipoProvider(_busqueda)).when(
+                        // Si hay búsqueda, usamos el provider correcto según el toggle
+                        : (!_buscarPorCliente 
+                            ? ref.watch(historialEquipoProvider(_busqueda))
+                            : ref.watch(historialClienteProvider(_busqueda))
+                          ).when(
                             loading: () => const Center(child: CircularProgressIndicator()),
                             error: (e, _) => Center(child: Text('Error: $e')),
                             data: (res) {

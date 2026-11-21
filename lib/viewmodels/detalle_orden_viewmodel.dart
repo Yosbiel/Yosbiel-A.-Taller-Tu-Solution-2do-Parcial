@@ -48,6 +48,7 @@ class DetalleOrdenViewModel
     final trabajos = await dao.obtenerTrabajosDeOrden(orden.id);
     final repuestos = await dao.obtenerRepuestosDeOrden(orden.id);
     final total = await dao.calcularCostoTotalOrden(orden.id);
+    
     return DetalleOrdenState(
       trabajos: trabajos,
       repuestos: repuestos,
@@ -56,49 +57,52 @@ class DetalleOrdenViewModel
     );
   }
 
-  Future<void> guardarCambios(String nuevoEstado, int? tecnicoId) async {
+  // Envuelve una acción asíncrona para mostrar el estado "guardando" en la UI.
+  // Usamos try/finally para garantizar que el spinner se apague aunque falle.
+  Future<void> _ejecutarConEstado(Future<void> Function() accion) async {
     final actual = state.valueOrNull;
     if (actual == null) return;
+
     state = AsyncData(actual.copyWith(guardando: true));
     try {
-      final dao = ref.read(talleresDaoProvider);
-      await dao.actualizarEstadoYTecnico(
-        arg.id,
-        nuevoEstado,
-        tecnicoId: tecnicoId,
-      );
+      await accion();
     } finally {
-      state = AsyncData((state.valueOrNull ?? actual).copyWith(guardando: false));
+      // Recargamos los datos siempre al final para reflejar cambios reales en BD.
+      state = AsyncData(await _cargar(arg));
     }
+  }
+
+  Future<void> guardarCambios(String nuevoEstado, int? tecnicoId) async {
+    await _ejecutarConEstado(() async {
+      final dao = ref.read(talleresDaoProvider);
+      await dao.actualizarEstadoYTecnico(arg.id, nuevoEstado, tecnicoId: tecnicoId);
+    });
   }
 
   Future<void> agregarTrabajo(String descripcion, double costo) async {
-    final actual = state.valueOrNull;
-    if (actual == null) return;
-    state = AsyncData(actual.copyWith(guardando: true));
-    try {
+    await _ejecutarConEstado(() async {
       final dao = ref.read(talleresDaoProvider);
       await dao.insertarTrabajo(arg.id, descripcion, costo);
-      state = AsyncData(await _cargar(arg).then((s) => s.copyWith(guardando: false)));
-    } finally {
-      state = AsyncData((state.valueOrNull ?? actual).copyWith(guardando: false));
-    }
+    });
   }
 
   Future<void> agregarRepuesto(int repuestoId, int cantidad) async {
-    final actual = state.valueOrNull;
-    if (actual == null) return;
-    state = AsyncData(actual.copyWith(guardando: true));
-    try {
+    await _ejecutarConEstado(() async {
       final dao = ref.read(talleresDaoProvider);
       await dao.agregarRepuestoAOrden(
         ordenId: arg.id,
         repuestoId: repuestoId,
         cantidadUsada: cantidad,
       );
-      state = AsyncData(await _cargar(arg).then((s) => s.copyWith(guardando: false)));
-    } finally {
-      state = AsyncData((state.valueOrNull ?? actual).copyWith(guardando: false));
-    }
+    });
+  }
+
+  // La vista ya no necesita conocer el DAO para liberar la orden.
+  // El ViewModel se encarga de orquestar la acción y recargar el estado.
+  Future<void> liberarOrden() async {
+    await _ejecutarConEstado(() async {
+      final dao = ref.read(talleresDaoProvider);
+      await dao.liberarOrden(arg.id);
+    });
   }
 }
