@@ -16,7 +16,7 @@ final talleresDaoProvider = Provider<TalleresDao>((ref) {
 });
 
 final ordenesAbiertasProvider =
-    StreamProvider.autoDispose<List<OrdenesReparacionData>>((ref) {
+    StreamProvider<List<OrdenesReparacionData>>((ref) {
   final dao = ref.watch(talleresDaoProvider);
   return dao.watchOrdenesAbiertas();
 });

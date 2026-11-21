@@ -17,12 +17,9 @@ class ConsultasScreen extends ConsumerStatefulWidget {
 class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabCtrl;
-  final _equipoCtrl = TextEditingController();
-  final _clienteCtrl = TextEditingController();
-  String _busquedaEquipo = '';
-  String _busquedaCliente = '';
-  Timer? _debounceEquipo;
-  Timer? _debounceCliente;
+  final _busquedaCtrl = TextEditingController();
+  String _busqueda = '';
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -32,25 +29,16 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
 
   @override
   void dispose() {
-    _debounceEquipo?.cancel();
-    _debounceCliente?.cancel();
+    _debounce?.cancel();
     _tabCtrl.dispose();
-    _equipoCtrl.dispose();
-    _clienteCtrl.dispose();
+    _busquedaCtrl.dispose();
     super.dispose();
   }
 
-  void _onBuscarEquipo(String v) {
-    _debounceEquipo?.cancel();
-    _debounceEquipo = Timer(const Duration(milliseconds: 300), () {
-      if (mounted) setState(() => _busquedaEquipo = v.trim());
-    });
-  }
-
-  void _onBuscarCliente(String v) {
-    _debounceCliente?.cancel();
-    _debounceCliente = Timer(const Duration(milliseconds: 300), () {
-      if (mounted) setState(() => _busquedaCliente = v.trim());
+  void _onBuscar(String v) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) setState(() => _busqueda = v.trim());
     });
   }
 
@@ -61,52 +49,6 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
     return '$d/$m/$y';
   }
 
-  Widget _tarjeta(HistorialOrdenItem item, {required bool mostrarCliente}) {
-    final tecnico = item.tecnicoNombre ?? 'Sin asignar';
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        title: Text(
-          '${item.equipo.tipo} ${item.equipo.marca} ${item.equipo.modelo} (S/N: ${item.equipo.numeroSerie})',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (mostrarCliente)
-                Text('Cliente: ${item.cliente.nombre} (${item.cliente.telefono})')
-              else
-                Text('Dueño: ${item.cliente.nombre} (${item.cliente.telefono})'),
-              Text('Falla: ${item.orden.fallaReportada}'),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  EstadoPildora(estado: item.orden.estado),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text('Técnico: $tecnico')),
-                ],
-              ),
-              Text('Fecha: ${_formatearFecha(item.orden.fechaCreacion)}'),
-            ],
-          ),
-        ),
-        isThreeLine: true,
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => DetalleOrdenScreen(orden: item.orden),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  // Tarjeta simple para cuando se muestran TODAS las ordenes (sin join)
   Widget _tarjetaSimple(OrdenesReparacionData orden) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -128,6 +70,48 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
             context,
             MaterialPageRoute(
               builder: (_) => DetalleOrdenScreen(orden: orden),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _tarjeta(HistorialOrdenItem item) {
+    final tecnico = item.tecnicoNombre ?? 'Sin asignar';
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        title: Text(
+          '${item.equipo.tipo} ${item.equipo.marca} ${item.equipo.modelo} (S/N: ${item.equipo.numeroSerie})',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Cliente: ${item.cliente.nombre} (${item.cliente.telefono})'),
+              Text('Falla: ${item.orden.fallaReportada}'),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  EstadoPildora(estado: item.orden.estado),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text('Técnico: $tecnico')),
+                ],
+              ),
+              Text('Fecha: ${_formatearFecha(item.orden.fechaCreacion)}'),
+            ],
+          ),
+        ),
+        isThreeLine: true,
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => DetalleOrdenScreen(orden: item.orden),
             ),
           );
         },
@@ -157,27 +141,19 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
               ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  const Text('Carga por técnico',
-                      style: TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold)),
+                  const Text('Carga por técnico', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   cargaAsync.when(
                     loading: () => const CircularProgressIndicator(),
                     error: (e, _) => Text('Error: $e'),
                     data: (carga) {
-                      if (carga.isEmpty) {
-                        return const Text('No hay órdenes activas.');
-                      }
+                      if (carga.isEmpty) return const Text('No hay órdenes activas.');
                       return Column(
                         children: carga.entries.map((e) {
                           return Card(
                             child: ListTile(
                               title: Text('Técnico: ${e.key}'),
-                              trailing: Text(
-                                '${e.value} órdenes activas',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold),
-                              ),
+                              trailing: Text('${e.value} órdenes activas', style: const TextStyle(fontWeight: FontWeight.bold)),
                             ),
                           );
                         }).toList(),
@@ -185,20 +161,13 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
                     },
                   ),
                   const Divider(height: 32),
-                  Text('Repuestos con stock bajo',
-                      style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.error)),
+                  Text('Repuestos con stock bajo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: theme.colorScheme.error)),
                   const SizedBox(height: 8),
                   repuestosStockBajoAsync.when(
                     loading: () => const CircularProgressIndicator(),
                     error: (e, _) => Text('Error: $e'),
                     data: (lista) {
-                      if (lista.isEmpty) {
-                        return const Text(
-                            'Todo el inventario tiene buen stock.');
-                      }
+                      if (lista.isEmpty) return const Text('Todo el inventario tiene buen stock.');
                       return Column(
                         children: lista.map((rep) {
                           return Card(
@@ -206,13 +175,7 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
                             child: ListTile(
                               title: Text(rep.nombre),
                               subtitle: Text('Código: ${rep.codigo}'),
-                              trailing: Text(
-                                'Stock: ${rep.existencias}',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: theme.colorScheme.onErrorContainer,
-                                ),
-                              ),
+                              trailing: Text('Stock: ${rep.existencias}', style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.onErrorContainer)),
                             ),
                           );
                         }).toList(),
@@ -221,96 +184,50 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
                   ),
                 ],
               ),
-              ListView(
-                padding: const EdgeInsets.all(16),
+              Column(
                 children: [
-                  const Text(
-                    'Historial de reparaciones. Sin filtro se muestran todas; escribe para buscar por equipo o cliente.',
-                    style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: TextField(
+                      controller: _busquedaCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'Buscar por equipo (serie/marca) o cliente',
+                        prefixIcon: Icon(Icons.search, color: theme.colorScheme.primary),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onChanged: _onBuscar,
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  _seccionHistorial(
-                    titulo: 'Historial por equipo (serie, marca o modelo)',
-                    ctrl: _equipoCtrl,
-                    busqueda: _busquedaEquipo,
-                    onChanged: _onBuscarEquipo,
-                    mostrarCliente: false,
-                  ),
-                  const Divider(height: 32),
-                  _seccionHistorial(
-                    titulo: 'Historial por cliente (nombre o teléfono)',
-                    ctrl: _clienteCtrl,
-                    busqueda: _busquedaCliente,
-                    onChanged: _onBuscarCliente,
-                    mostrarCliente: true,
+                  Expanded(
+                    child: _busqueda.isEmpty
+                        ? ref.watch(historialCompletoProvider).when(
+                            loading: () => const Center(child: CircularProgressIndicator()),
+                            error: (e, _) => Center(child: Text('Error: $e')),
+                            data: (res) {
+                              if (res.isEmpty) return const Center(child: Text('Sin resultados.'));
+                              return ListView(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                children: res.map((o) => _tarjetaSimple(o)).toList(),
+                              );
+                            },
+                          )
+                        : ref.watch(historialEquipoProvider(_busqueda)).when(
+                            loading: () => const Center(child: CircularProgressIndicator()),
+                            error: (e, _) => Center(child: Text('Error: $e')),
+                            data: (res) {
+                              if (res.isEmpty) return const Center(child: Text('Sin resultados.'));
+                              return ListView(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                children: res.map((i) => _tarjeta(i)).toList(),
+                              );
+                            },
+                          ),
                   ),
                 ],
               ),
             ],
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _seccionHistorial({
-    required String titulo,
-    required TextEditingController ctrl,
-    required String busqueda,
-    required void Function(String) onChanged,
-    required bool mostrarCliente,
-  }) {
-    final theme = Theme.of(context);
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(titulo,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        TextField(
-          controller: ctrl,
-          decoration: InputDecoration(
-            labelText: 'Escribe para filtrar',
-            prefixIcon: Icon(Icons.search, color: theme.colorScheme.primary),
-          ),
-          onChanged: onChanged,
-        ),
-        const SizedBox(height: 10),
-        
-        // AQUI ESTA LA MAGIA: Si no hay busqueda, usa el Stream completo.
-        // Si hay busqueda, usa el FutureProvider de filtro.
-        if (busqueda.isEmpty)
-          ref.watch(historialCompletoProvider).when(
-            loading: () => const Padding(
-              padding: EdgeInsets.all(8.0),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (e, _) => Text('Error: $e'),
-            data: (res) {
-              if (res.isEmpty) return const Text('Sin resultados.');
-              return Column(
-                children: res.map((o) => _tarjetaSimple(o)).toList(),
-              );
-            },
-          )
-        else
-          (mostrarCliente
-            ? ref.watch(historialClienteProvider(busqueda))
-            : ref.watch(historialEquipoProvider(busqueda))
-          ).when(
-            loading: () => const Padding(
-              padding: EdgeInsets.all(8.0),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (e, _) => Text('Error: $e'),
-            data: (res) {
-              if (res.isEmpty) return const Text('Sin resultados.');
-              return Column(
-                children: res.map((i) => _tarjeta(i, mostrarCliente: mostrarCliente)).toList(),
-              );
-            },
-          ),
       ],
     );
   }
