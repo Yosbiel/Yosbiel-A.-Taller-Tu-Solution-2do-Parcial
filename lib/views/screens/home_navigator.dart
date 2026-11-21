@@ -15,7 +15,7 @@ class HomeNavigator extends StatefulWidget {
 class _HomeNavigatorState extends State<HomeNavigator> {
   int _indiceActual = 0;
 
-  static const _titulos = ['Ordenes', 'Inventario', 'Consultas'];
+  static const _titulos = ['Órdenes', 'Inventario', 'Consultas'];
 
   @override
   Widget build(BuildContext context) {
@@ -31,13 +31,28 @@ class _HomeNavigatorState extends State<HomeNavigator> {
         ),
         actions: const [BotonTema(), BotonInfo()],
       ),
-      body: IndexedStack(
-        index: _indiceActual,
-        children: const [
-          OrdenesScreen(),
-          InventarioScreen(),
-          ConsultasScreen(),
-        ],
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        transitionBuilder: (Widget child, Animation<double> animation) {
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0.05, 0.0),
+                end: Offset.zero,
+              ).animate(animation),
+              child: child,
+            ),
+          );
+        },
+        child: KeyedSubtree(
+          key: ValueKey<int>(_indiceActual),
+          child: [
+            const OrdenesScreen(),
+            const InventarioScreen(),
+            const ConsultasScreen(),
+          ][_indiceActual],
+        ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _indiceActual,

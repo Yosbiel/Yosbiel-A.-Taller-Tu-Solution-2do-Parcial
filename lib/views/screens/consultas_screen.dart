@@ -69,8 +69,8 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => DetalleOrdenScreen(orden: orden),
+            RutaDeslizante(
+              page: DetalleOrdenScreen(orden: item.orden),
             ),
           );
         },
@@ -111,8 +111,8 @@ class _ConsultasScreenState extends ConsumerState<ConsultasScreen>
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => DetalleOrdenScreen(orden: item.orden),
+            RutaDeslizante(
+              page: DetalleOrdenScreen(orden: item.orden),
             ),
           );
         },

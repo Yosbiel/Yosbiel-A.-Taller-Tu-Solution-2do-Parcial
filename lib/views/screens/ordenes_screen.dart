@@ -50,8 +50,8 @@ class OrdenesScreen extends ConsumerWidget {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => DetalleOrdenScreen(orden: orden),
+                      RutaDeslizante(
+                        page: DetalleOrdenScreen(orden: orden),
                       ),
                     );
                   },
