@@ -253,9 +253,6 @@ class InventarioScreen extends ConsumerWidget {
         onPressed: () => _mostrarFormulario(context, ref),
         child: const Icon(Icons.add),
       ),
-        onPressed: () => _mostrarFormulario(context, ref),
-        child: const Icon(Icons.add),
-      ),
     );
   }
 }
