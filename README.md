@@ -23,7 +23,7 @@
 <h2>Requisitos e Instalación</h2>
 
 <h3>Versión de Flutter</h3>
-<p>El proyecto fue desarrollado y compilado con <b>Flutter estable (3.x)</b>.</p>
+<p>El proyecto fue desarrollado y compilado con <b>Flutter estable </b>.</p>
 
 <h3>Application ID</h3>
 <p>El identificador de la aplicación es: <br>
